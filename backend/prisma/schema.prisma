@@ -29,6 +29,11 @@ model Item {
   price Int?
   stock Int?
 
+  // Compound index serves the common filtered-list query (category +
+  // optional subCategory, ordered by createdAt DESC) for cursor pagination.
   @@index([category, subCategory, createdAt(sort: Desc)])
-  @@index([title])
+
+  // Note: substring-search indexes on title/description live OUTSIDE this
+  // schema as raw-SQL migrations because Prisma can't yet declare GIN +
+  // gin_trgm_ops in the schema DSL. See migration `add_pg_trgm_gin_search`.
 }

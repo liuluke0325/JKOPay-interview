@@ -1,24 +1,9 @@
-import Fastify from 'fastify';
-import cors from '@fastify/cors';
-import { healthRoutes } from './routes/health.js';
+import { buildServer } from './app.js';
+import { loadEnv } from './lib/env.js';
 import { prisma } from './lib/prisma.js';
 
-const PORT = Number(process.env.PORT ?? 3001);
-const HOST = process.env.HOST ?? '0.0.0.0';
-const CORS_ORIGIN = process.env.CORS_ORIGIN ?? 'http://localhost:3000';
-
-async function buildServer() {
-  const app = Fastify({
-    logger: { level: process.env.LOG_LEVEL ?? 'info' },
-  });
-
-  await app.register(cors, { origin: CORS_ORIGIN });
-  await app.register(healthRoutes);
-
-  return app;
-}
-
 async function main() {
+  const env = loadEnv();
   const app = await buildServer();
 
   const shutdown = async (signal: string) => {
@@ -34,7 +19,9 @@ async function main() {
   process.on('SIGTERM', () => void shutdown('SIGTERM'));
 
   try {
-    await app.listen({ port: PORT, host: HOST });
+    await app.listen({ port: env.PORT, host: env.HOST });
+    const docsBase = env.PUBLIC_BASE_URL ?? `http://localhost:${env.PORT}`;
+    app.log.info(`Swagger UI: ${docsBase}/docs`);
   } catch (err) {
     app.log.error(err);
     process.exit(1);
