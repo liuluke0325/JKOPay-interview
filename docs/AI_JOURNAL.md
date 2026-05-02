@@ -176,3 +176,129 @@ update the journal entry in the same turn — leaving stale "we picked X"
 narration ahead of "we actually shipped Y" makes the AI-collaboration
 artifact misleading. Codex caught this in RR-002.
 
+### 2026-05-03 — M2 hardening: production-scale push + Codex's spoofability catch — agent: Claude
+
+**Context.** After M2's API endpoints + Swagger landed, I framed scaling
+and caching as optional "M9 polish, anchored on '90 rows = no bottleneck.'"
+The user pushed back hard:
+
+> "hey you shouldn't assume 90 data, pls assume there will be thousands of
+> ppl calling at the same time, 90 its for mock purpose, what if more then
+> 10thousands? we are demo but we should showcase what we know and think"
+
+That reframed the whole milestone. Not "add caching if cheap" but "design
+for production load by default; demo is no excuse to skip showcase-level
+thinking." Saved as a permanent project rule (memory:
+`feedback_design_for_production_scale.md`) and added as
+**AGENTS.md Hard Rule 11**.
+
+**Exchange — what got built (RR-003 round 1).** Six concrete items,
+chosen as the cheap-real-production-grade subset:
+
+1. `pg_trgm` GIN migration — replaces useless btree title/description
+   indexes; `ILIKE '%q%'` becomes index-backed at scale.
+2. `@fastify/compress` — br + gzip + 1KB threshold. Verified ~10× reduction
+   on Chinese-heavy list payloads.
+3. `Cache-Control` per route — aggressive on `/sub-categories` (deploy-bound
+   TTL), short on `/items` list, medium on `/items/:id`.
+4. `@fastify/rate-limit` — env-tunable, allowList for `/health` and `/docs`.
+5. `connection_limit` env knob on `DATABASE_URL` with PgBouncer guidance
+   in `docs/SCALING.md`.
+6. `x-request-id` header surfaced via `genReqId` + `onSend` hook.
+
+Plus `docs/SCALING.md` documenting what was *deferred* with rationale
+(distributed rate-limit state, Redis hot-read tier, read replicas, FTS
+alternative, observability stack, load-test sketch).
+
+**Codex's catch — adversarial vs functional smoke.** I shipped
+`trustProxy: true` to "surface real client IP behind LB" and verified the
+rate limit by hammering `/sub-categories` 8 times (first 5 = 200, last 3
+= 429). Functional smoke green. Codex independently tested with three
+different `X-Forwarded-For` values per request: all 200. **The rate limit
+was bypassable** — any direct client could mint a fake IP per request.
+
+This is the most important Codex catch of the project so far because:
+
+- I had functional verification ("limit triggers under load").
+- I did not have **adversarial** verification ("limit can't be bypassed").
+- The two answer different questions, and security-relevant code requires
+  both.
+
+Saved as a separate feedback memory:
+`feedback_adversarial_smoke_for_security_code.md`. Generalizes beyond
+this project — any rate-limit / auth / CORS / header-trust work needs
+the bypass attempt as part of self-check.
+
+**Fix — RR-003 round 2.** `TRUST_PROXY` is now env-driven and **defaults
+to `false`**. Production deployers behind a known proxy topology must
+opt in (`TRUST_PROXY=1` for Railway, `TRUST_PROXY=2` for Cloudflare→Railway,
+or a CIDR list). Documented as a deployment matrix in `docs/SCALING.md`.
+Locked in by `backend/src/spoof-resistance.test.ts` — one suite asserts
+the safe default rejects spoof, a *second* suite deliberately demonstrates
+the historical bypass under `TRUST_PROXY=true` so any future regression
+surfaces immediately.
+
+Codex's round-2 reconfirmation also caught: stale `trustProxy: true` text
+in `docs/SCALING.md` "Request correlation" section and `docs/PROGRESS.md`
+M2-hardening log line. Both rewritten. CIDR validation in
+`backend/src/lib/env.ts` was tightened so bad input fails fast at boot
+with a structured error (not a deep `proxy-addr` parser stack later).
+
+**Subplot — env caching bug surfaced by writing the test.** First cut of
+`spoof-resistance.test.ts` failed because `app.ts` had
+`const env = loadEnv()` at module-import time — `_resetEnvCacheForTesting()`
+cleared the inner cache but the module-level `env` constant in `app.ts`
+was already frozen. Refactored `app.ts` to call `loadEnv()` *inside*
+`buildServer()`, moved `PORT`/`HOST` to read directly in `server.ts`. Test
+suite started passing (and would have shipped a latent test-isolation bug
+without it).
+
+**Round 3 verdict (2026-05-03):** `approved` by Codex with two bookkeeping
+suggestions and one acknowledged nit. RR-003 closed.
+
+**Today's Q&A — crystallizing the decisions.** After RR-003 closed, the
+user asked six concrete technical questions about the scaling/security
+work just shipped:
+
+1. Does `pg_trgm` GIN actually work for Chinese? *(Yes, with the 3-char
+   trigram threshold caveat — see ADR-0010.)*
+2. Why cursor pagination over `OFFSET`? *(OFFSET drifts under concurrent
+   writes + O(N) cost; cursor's compound key + OR-partition stays correct
+   under writes — see ADR-0006 + LEARNING_NOTES §4.)*
+3. What's `TRUST_PROXY`? *(Who do we trust to set X-F-F; default off because
+   the wrong setting is silent — see ADR-0011 + LEARNING_NOTES §5.)*
+4. What's `genReqId` for? *(Per-request correlation id; surfaced as
+   `x-request-id` header so user-reported bugs trace to one log line.
+   Regex-validated to prevent log poisoning.)*
+5. Is `Cache-Control` standard, and how do I bust on data change?
+   *(Standard per RFC 9111; three invalidation patterns — purge on
+   deploy, URL versioning, surrogate keys / Cache-Tags — see ADR-0012.)*
+6. So we don't need Redis? *(Right, for our access pattern. Redis is
+   deferred with explicit reactivation triggers in SCALING.md — see
+   ADR-0012 + LEARNING_NOTES §6.)*
+
+Walking through these turned conversational explanations into four new
+ADRs (0010–0013), four new LEARNING_NOTES sections (§3–§6), and
+back-filled bodies for ADR-0003/0004/0005 (M1 decisions whose stubs were
+still empty). The Q&A wasn't just teaching — it was a forcing function
+to spot which decisions weren't yet documented.
+
+**Outcome.** RR-003 approved; M2 done. ADR slate is now 13 entries, of
+which 11 are technical (Hard Rule 5 satisfied many times over). Memory
+got two new entries: `design for production scale` and `adversarial smoke
+for security code`. AGENTS.md Hard Rule 11 makes the production-scale
+framing permanent for any future scope decision on this project.
+
+**Lessons (durable):**
+
+- **Demo ≠ "skip the production thinking."** The user reset my framing
+  to "showcase what we know" — the right default for any interview build.
+- **Functional smoke alone is insufficient for security code.** Always
+  pair with an adversarial smoke (try to bypass).
+- **Q&A drives decision-doc completeness.** When the user asks
+  "explain X to me," the right move isn't just to explain — it's to
+  also write the ADR/LEARNING_NOTES for X if they don't already exist,
+  while the explanation is fresh.
+- **Module-level env reads block test isolation.** `loadEnv()` at module
+  import time caches before tests can mutate. Push env reads into the
+  factory function, not the module top.
