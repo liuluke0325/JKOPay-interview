@@ -85,3 +85,30 @@ materially changed the data model (single `Item` table with category enum +
 nullable category-specific fields; sub-category as a real filter; detail page
 needed) — worth re-running the requirements pass when new design artifacts
 land, not assuming the v1 plan stands.
+
+### 2026-05-02 — M1: backend skeleton + seed — agent: Claude
+
+**Context.** Implementing M1 (BE + DB + seed) per the approved plan. User
+wanted a flat repo and a Makefile for easy reviewer bring-up.
+
+**Exchange.** Two notable decision points:
+1. *Sub-categories storage.* Plan said "free-form within a category" but the
+   `GET /sub-categories` endpoint needs a deterministic source. Options were
+   a separate `SubCategory` table (more "correct") or a TS constants module.
+   Picked the constants module — for an interview project this avoids a
+   second migration and gives a single import path that both the seed and
+   the future route handler use.
+2. *Port collision.* `docker compose up` failed because another project's
+   Postgres was already on 5432 (`frost-template-postgres-1`). Rather than
+   asking the user to kill the other container, switched the host-side
+   binding to `5433:5432` and updated `.env.example` accordingly. Documented
+   the reason inline in the compose file.
+
+**Outcome.** 90 items seeded (30 per category × 13 sub-categories). `/health`
+returns `{ ok: true, dbConnected: true }`. `make setup` runs install →
+docker → wait-db → migrate → seed end-to-end, so the next reviewer (human or
+agent) can clone and be running in one command.
+
+**Lesson.** Defensive port mapping (5433:5432 with a comment) costs nothing
+upfront and saves the next person from the same collision. Worth doing
+proactively in any docker-compose for a multi-project machine.

@@ -1,0 +1,23 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: jopay-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: jopay
+      POSTGRES_PASSWORD: jopay
+      POSTGRES_DB: jopay
+    ports:
+      # Host 5433 → container 5432. Host port shifted because another local
+      # Postgres (e.g. another project's docker) commonly squats on 5432.
+      - "5433:5432"
+    volumes:
+      - jopay-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jopay -d jopay"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  jopay-postgres-data:
