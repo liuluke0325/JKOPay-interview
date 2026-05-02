@@ -73,11 +73,13 @@ Tab → category mapping:
   - `category` required (`ORG` / `CAMPAIGN` / `MERCHANDISE`)
   - `subCategory` optional
   - `q` optional, case-insensitive match against `title` and `description`
-  - `cursor` optional opaque string (base64 of `{createdAt, id}`)
+  - `cursor` optional opaque string (base64url of `{createdAt, id}`)
   - `limit` default 20, max 100
   - Response: `{ items: Item[], nextCursor: string | null }`
 - `GET /items/:id` → full `Item` (404 if not found)
 - `GET /sub-categories?category=` → `[{ value: string, label: string }]`
+- `GET /health` → `{ ok: true, dbConnected: boolean }`
+- **`GET /docs`** — Swagger UI (interactive); **`GET /docs/json`** — raw OpenAPI 3.0.3 spec. Generated from the same zod schemas that drive request validation, so the spec can't drift from runtime behavior.
 
 ## 5. Acceptance criteria
 
@@ -123,6 +125,7 @@ Tab → category mapping:
 - [ ] `GET /sub-categories?category=...` returns `[{ value, label }]` for the dropdown
 - [ ] All DB access goes through Prisma; no raw SQL
 - [ ] Mock seed populates ≥30 items per category (≥90 total) with realistic logos for some
+- [ ] `GET /docs` serves Swagger UI; `GET /docs/json` returns OpenAPI 3.0+ spec generated from the same zod schemas as request validation
 
 ### E. i18n & responsive
 

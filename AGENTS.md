@@ -64,6 +64,7 @@ project evolves:
 8. **Single Prisma `Item` table for all three categories.** Category-specific fields (`amountRaised`/`amountGoal`/`deadline`/`price`/`stock`) are nullable columns on the same row. Don't fork into per-category tables — see the data model in `docs/REQUIREMENTS.md`.
 9. **All UI strings flow through `next-intl` dictionaries.** No hard-coded zh-TW literals in JSX. zh-TW is the default locale; an `en` stub bundle is fine but must exist.
 10. **Don't commit secrets.** No `.env` with real DB URLs, no Neon connection strings, no Railway tokens. Use `.env.example` for shape; deployment-time secrets live in Vercel/Railway/Neon dashboards.
+11. **Design for production load, not the seed size.** The 90-item seed is a development convenience. Risks, ADRs, indexes, and infrastructure choices must be sized against the realistic production scenario (thousands concurrent, 10k–100k+ items). Don't write "this is fine because the seed is small" — write what would actually happen at scale and ship cheap mitigations. Expensive mitigations get documented in `docs/SCALING.md` rather than skipped. (Origin: user feedback after M2 — "you shouldn't assume 90 data... we are demo but we should showcase what we know and think.")
 
 ## Working agreements
 

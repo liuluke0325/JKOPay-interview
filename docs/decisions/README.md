@@ -13,7 +13,7 @@ Numbering is monotonic across the folder. Don't reuse numbers even after rejecti
 | 0003 | [Frontend: Next.js over plain React](0003-frontend-nextjs.md)             | Proposed      |
 | 0004 | [ORM: Prisma over TypeORM](0004-orm-prisma.md)                            | Proposed      |
 | 0005 | [Database: Postgres via docker-compose over SQLite](0005-db-postgres-docker.md) | Proposed |
-| 0006 | [Cursor-based pagination over offset](0006-pagination-cursor.md)          | Proposed      |
+| 0006 | [Cursor-based pagination over offset](0006-pagination-cursor.md)          | Accepted      |
 | 0007 | [i18n: next-intl with zh-TW default](0007-i18n-next-intl.md)              | Proposed      |
 | 0008 | [List virtualization with react-window](0008-virtualization-react-window.md) | Proposed   |
 | 0009 | [Tab + scroll restore on search cancel](0009-tab-scroll-restore.md)       | Proposed      |

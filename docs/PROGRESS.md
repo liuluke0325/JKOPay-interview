@@ -5,7 +5,7 @@ it current. Format per entry: date, what changed, what's next, blockers.
 
 ## Status snapshot
 
-- **Phase**: M1 complete + RR-001 `approved` by Codex CLI. Ready for M2 (API endpoints) on user go-ahead.
+- **Phase**: M2 complete + hardening pass. **RR-001 `approved`, RR-002 cleared (implicitly approved per Codex's verified-list during the RR-003 reconfirmation), RR-003 `approved`** (round-2 Reconfirmation, 2026-05-03). Ready to start M3 (FE skeleton) on user go-ahead.
 - **Last updated**: 2026-05-02
 - **Branch**: main (git initialized; baseline commit `4df3baf init`)
 
@@ -17,7 +17,7 @@ Critical-path: M1 → M2 → M3 → M4 → M5 → M6 → M8. Tests (M7) and fina
 | --- | ---------------------------------------------------------------------------------------------------------------------------------------- | -------- |
 | M0  | Repo scaffolding + agent-collab docs                                                                                                     | done     |
 | M1  | BE skeleton: Fastify + TS + Prisma `Item` schema (`category` + `subCategory` enums + nullable category-specific fields) + Postgres + seed (≥90 items, real logos for some) | done    |
-| M2  | API endpoints: `GET /items` (category + subCategory + q + cursor) + `GET /items/:id` + `GET /sub-categories`                             | pending  |
+| M2  | API endpoints: `GET /items` (category + subCategory + q + cursor) + `GET /items/:id` + `GET /sub-categories` + Swagger + production hardening (pg_trgm GIN, compress, ETag-deferred, rate-limit with TRUST_PROXY env, request-id) | done     |
 | M3  | FE skeleton: Next.js App Router + Tailwind + `next-intl` (zh-TW) + responsive shell; `/` view with red header + 3 tabs + functional sub-category dropdown | pending |
 | M4  | Card list + virtualized infinite scroll (`react-window`) + end-of-list separator                                                         | pending  |
 | M5  | `/search` route: input + abort + debounce + loading + empty + tabbed results + restore-on-cancel                                         | pending  |
@@ -40,6 +40,7 @@ Drawn from the brief's submission checklist + our REQUIREMENTS.md §5.G. Each it
   - [ ] **Prompt 紀錄 pointer** — explicit pointer to `docs/prompts/` (Option 1 chosen)
   - [ ] **Architecture overview** — short paragraph + link to `docs/decisions/`
   - [ ] **Demo link** — Vercel URL prominently at the top of README
+  - [ ] **Error-shape note** — document the deliberate split: schema validation failures return Fastify-shaped 400s; semantic failures (invalid sub-category for the chosen category, malformed cursor) return custom-shaped 400s. (Per Codex RR-002 suggestion.)
 - *ADR bodies (Status: Proposed → Accepted):*
   - [ ] ADR-0003 Next.js — body filled with context/decision/consequences (currently stub)
   - [ ] ADR-0004 Prisma — body filled
@@ -67,6 +68,38 @@ Drawn from the brief's submission checklist + our REQUIREMENTS.md §5.G. Each it
 
 - Scaffolded `AGENTS.md`, `CLAUDE.md`, and the `docs/` seven-pack via the `agent-collab-init` skill. Cross-agent review workflow active.
 - Next: align the scaffold to the JKO brief (Phase A) before any code.
+
+### 2026-05-02 — M2 hardening pass: production-scale wiring (RR-003)
+
+User pushback on the M2 wrap-up framing ("you shouldn't assume 90 data... assume thousands of ppl calling at the same time, what if more than 10thousands? we are demo but we should showcase what we know and think") prompted a hardening pass over the M2 surface:
+
+- **DB-level:** new migration `20260502153230_add_pg_trgm_gin_search` enables `pg_trgm` and adds GIN indexes on `title` and `description` with `gin_trgm_ops` so `ILIKE '%q%'` is index-backed at scale; drops the old btree indexes which were useless for substring search.
+- **Compression:** `@fastify/compress` registered globally (br + gzip, threshold 1024). Verified ~9.9× reduction on Chinese-heavy list payloads (15 KB → 1.5 KB).
+- **HTTP cache headers:** `Cache-Control` per route — `s-maxage=3600` on `/sub-categories` (static), `s-maxage=60` on `/items` list, `s-maxage=300` on `/items/:id`. CDN/edge cache becomes effective immediately.
+- **Rate limit:** `@fastify/rate-limit` env-tunable (default 100/min/IP), `/health` and `/docs` allowListed. Verified: limit triggers 429 with `retry-after` and `x-ratelimit-*` headers.
+- **Request id:** `genReqId` + `onSend` hook surface `x-request-id` on every response for log correlation; incoming ids are regex-validated before reflection.
+- **Proxy trust:** `TRUST_PROXY` env-driven and **defaults to `false`** so `req.ip` is the unspoofable socket peer in dev. Production deployments must set `TRUST_PROXY` to a CIDR list / hop count matching the upstream topology — see `docs/SCALING.md` rate-limit section for the deployment matrix.
+- **Connection pool:** `DATABASE_URL?connection_limit=10` documented in `.env.example` with tuning guidance for production + PgBouncer notes.
+- **Hard Rule 11 added to AGENTS.md:** "Design for production load, not the seed size." Permanent project rule, not a one-off.
+- **`docs/SCALING.md` written:** documents what's implemented (6 items) and what's deferred with rationale (Redis cache tier, distributed rate-limit, read replicas, FTS alternative, observability stack, load-test sketch).
+- **RISKS.md updated:** R3 reframed honestly; R13 (DB pool exhaustion), R14 (egress payload), R15 (single-client DoS) added.
+- All checks green: typecheck, build, 8/8 cursor tests, smoke curls including compression and rate-limit verification.
+
+RR-003 written for cross-agent review (separate from RR-002 which is already in reconfirmation).
+
+### 2026-05-02 — M2 complete: API endpoints + cursor pagination + Swagger
+
+- Added `zod` for query/param validation; later upgraded to schema-based validation via Fastify's route schema mechanism.
+- New migration `20260502145445_add_description_index` adds the `description` column index Codex flagged in RR-001 (item §3 of suggestions). Compound index `(category, subCategory, createdAt DESC)` plus title and description indexes give us coverage for every filter the list endpoint uses.
+- `backend/src/lib/cursor.ts` encodes/decodes an opaque base64url cursor over `(createdAt, id)`. id is the tiebreaker because the seed inserts in tight succession and many rows share `createdAt`.
+- `GET /sub-categories?category=` reads from `backend/src/lib/sub-categories.ts` — no DB hit, just a typed array shaped as `{value, label}` pairs ready for the dropdown.
+- `GET /items?category=&subCategory=&q=&cursor=&limit=` filters by category (required), optional subCategory (validated against the constants module), case-insensitive `q` over title+description, applies the cursor as a where-clause OR pair, orders by `(createdAt DESC, id DESC)`, takes `limit + 1` to peek for next page. Returns `{ items, nextCursor }`.
+- `GET /items/:id` returns the full item or 404.
+- **Added Swagger / OpenAPI in same milestone** via `@fastify/swagger` + `@fastify/swagger-ui` + `fastify-type-provider-zod`. Single source of truth: the same zod schemas drive request validation AND the OpenAPI spec. Swagger UI at `/docs`; raw spec at `/docs/json`. As part of this, refactored all route handlers (including `/health`) to declare schemas via Fastify route options instead of in-handler `safeParse`, and shared response shapes via `backend/src/lib/schemas.ts`.
+- Smoke tests passed: pagination (page 1→2 with no overlap, nextCursor null on last page), search (q=流浪動物 → 1 hit), sub-cat filter (ORG+動物保護 → 6 items), detail (campaign with progress fields), 404 on missing id, 400 on bad category/subCategory, Swagger UI loads at `/docs`, OpenAPI 3.0.3 spec at `/docs/json` with `[/health, /items, /items/{id}, /sub-categories]`.
+- typecheck + build both clean (per the new "build is a self-check" working agreement from RR-001).
+- RR-002 amended in place to cover the Swagger addition (still `awaiting-review`, no reviewer touched it before the addition).
+- Next: M3 — FE skeleton (Next.js + Tailwind + next-intl + 3 tabs + functional sub-cat dropdown).
 
 ### 2026-05-02 — M1 complete: backend skeleton + DB + seed
 
