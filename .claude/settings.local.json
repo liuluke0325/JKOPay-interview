@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/lukeliu/.claude/skills/agent-collab-init/templates/**)",
+      "Read(//Users/lukeliu/.claude/skills/agent-collab-init/templates/docs/**)"
+    ]
+  }
+}

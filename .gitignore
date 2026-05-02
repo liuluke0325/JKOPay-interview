@@ -1,0 +1,81 @@
+# ─── Dependencies ──────────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.*
+.yarn/install-state.gz
+
+# Lockfiles: keep one (pnpm-lock.yaml / package-lock.json / yarn.lock).
+# Decide at M1; for now, commit whatever the chosen package manager produces.
+
+# ─── Build outputs ─────────────────────────────────────────────────
+# Next.js
+.next/
+out/
+
+# TypeScript
+*.tsbuildinfo
+dist/
+build/
+
+# Turborepo / monorepo cache (if we end up using it)
+.turbo/
+
+# ─── Environment ───────────────────────────────────────────────────
+# Real secrets — never commit. .env.example IS committed (see negation below).
+.env
+.env.*
+!.env.example
+
+# ─── Vercel / deployment ───────────────────────────────────────────
+.vercel/
+
+# ─── Prisma ────────────────────────────────────────────────────────
+# Migrations are committed; only ignore local SQLite-like artifacts if
+# they ever appear (we use Postgres, but keep this defensive).
+*.db
+*.db-journal
+
+# ─── Testing ───────────────────────────────────────────────────────
+coverage/
+*.lcov
+.nyc_output/
+
+# Playwright
+playwright-report/
+test-results/
+blob-report/
+.playwright/
+
+# ─── Logs ──────────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ─── Docker / local data ───────────────────────────────────────────
+# If docker-compose mounts a host volume for postgres data, ignore it.
+.postgres-data/
+postgres-data/
+.docker-data/
+
+# ─── Editors / OS ──────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+*.swo
+*~
+
+# .vscode/: ignored by default. If the team adopts a shared workspace
+# config (settings.json, extensions.json, launch.json), commit those
+# explicitly with `git add -f`.
+.vscode/
+
+# ─── Misc ──────────────────────────────────────────────────────────
+*.pid
+*.seed
+*.pid.lock
+.cache/
+.parcel-cache/
