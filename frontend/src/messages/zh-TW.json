@@ -1,0 +1,27 @@
+{
+  "header": {
+    "title": "所有捐款項目"
+  },
+  "tabs": {
+    "org": "公益團體",
+    "campaign": "捐款專案",
+    "merchandise": "義賣商品"
+  },
+  "filter": {
+    "allLabel": "全部",
+    "loading": "載入中..."
+  },
+  "list": {
+    "endOfList": "愛心沒有底線",
+    "loading": "載入中..."
+  },
+  "search": {
+    "placeholder": "搜尋",
+    "cancel": "取消",
+    "emptyTitle": "查無相關資料",
+    "emptyHint": "請調整關鍵字再重新搜尋"
+  },
+  "errors": {
+    "fetchFailed": "資料載入失敗，請稍後再試"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "header": {
+    "title": "All donation items"
+  },
+  "tabs": {
+    "org": "Organizations",
+    "campaign": "Campaigns",
+    "merchandise": "Merchandise"
+  },
+  "filter": {
+    "allLabel": "All",
+    "loading": "Loading..."
+  },
+  "list": {
+    "endOfList": "Love has no limits",
+    "loading": "Loading..."
+  },
+  "search": {
+    "placeholder": "Search",
+    "cancel": "Cancel",
+    "emptyTitle": "No matching results",
+    "emptyHint": "Try adjusting your keywords"
+  },
+  "errors": {
+    "fetchFailed": "Failed to load. Please try again."
+  }
+}
