@@ -80,6 +80,18 @@ project evolves:
 - **Order of operations matters.** Build the riskiest / most uncertain
   parts first; UI polish comes last. Don't make a thing pretty before it's
   correct.
+- **Pre-review self-checks must include build, not only typecheck.** Before
+  posting a `Review request` block to `docs/REVIEWS.md`, run all of:
+  `npm run typecheck`, `npm run build`, and a runtime smoke check
+  (e.g. `curl /health` or equivalent for the surface you just touched).
+  Typecheck and build can diverge — different `tsconfig` include scopes,
+  emit-time errors that `--noEmit` skips, etc. Record exactly what you ran
+  in the `Self-checks done.` section. (Origin: RR-001 reconfirmation, where
+  Codex independently ran `npm run build` and the implementer hadn't.)
+- **The Review request is a written artifact, not a chat mention.** When a
+  meaningful task completes, append the RR-NNN block to `docs/REVIEWS.md`
+  *before* reporting milestone-done to the human. Saying "want me to ask
+  the other agent to review?" is not the same as appending the entry.
 
 ## Cross-agent review workflow
 
