@@ -441,3 +441,70 @@ Files added/modified in Resolution 2:
   - Source search finds no raw Prisma SQL APIs or offset pagination in non-migration backend source.
   - The stale `trustProxy: true` current-state claims in `docs/SCALING.md` and `docs/PROGRESS.md` are fixed.
 - **Verdict.** `approved`
+
+### 2026-05-03 — RR-004 — M3 FE skeleton (Next.js + Tailwind + next-intl + TanStack Query + openapi-typescript codegen) — implementer: Claude Code
+
+**Scope.** Implements M3 per REQUIREMENTS §5.A as the base for M4-M6. Three commits per the agreed split: scaffold (chore A), wiring (feat B), shell (feat C). Aligns with Hard Rules 1 (TS only), 9 (i18n dictionaries — no hard-coded zh-TW), and the design-driven mockup chrome (red header, 3 tabs, `全部 ▼` dropdown).
+
+**Files touched.**
+
+*Commit A (`e47bef6`) — Next.js + Tailwind v4 + next-intl scaffold:*
+- `frontend/` whole new tree from `create-next-app` (TS strict, App Router, src/, ESLint, `@/*` alias). Removed Next.js boilerplate AGENTS.md/CLAUDE.md/README.md and starter SVGs.
+- `frontend/src/i18n/request.ts` + `frontend/src/messages/{zh-TW,en}.json` + `frontend/next.config.ts` (next-intl plugin).
+- `frontend/src/app/layout.tsx` async with `getLocale`/`getMessages`, wraps `NextIntlClientProvider` + `Providers`.
+- `frontend/src/app/globals.css` Tailwind v4 `@theme inline` tokens + JKO-red sampled from mockup + CJK fallback stack.
+- `Makefile` adds `dev-be`/`dev-fe`/`dev-all`/`types`/`test`.
+- `docs/decisions/0007-i18n-next-intl.md` body filled.
+
+*Commit B (`8a30be2`) — typed pipeline + TanStack Query:*
+- `frontend/src/lib/api-types.ts` (codegen output from `/docs/json`).
+- `frontend/src/lib/api.ts` (openapi-fetch typed client + friendly re-exports).
+- `frontend/src/lib/queries.ts` (`useSubCategories`, `useItems`).
+- `frontend/src/app/providers.tsx` (`'use client'` QueryClient + ReactQueryDevtools dev-only).
+- `docs/decisions/0014-tanstack-query.md` + `0015-openapi-typescript-codegen.md`.
+- Deps: `@tanstack/react-query`, `openapi-fetch`, `@tanstack/react-query-devtools`, `openapi-typescript`.
+
+*Commit C (this commit) — `/` view shell:*
+- `frontend/src/components/AppHeader.tsx` server component — JKO-red bar, i18n title, back-chevron placeholder.
+- `frontend/src/components/Tabs.tsx` `'use client'` — 3-tab switcher with active-state JKO-red underline, `aria-selected`, `role="tablist"`.
+- `frontend/src/components/SubCategoryDropdown.tsx` `'use client'` — native `<select>` styled with Tailwind, `value=''` ⇒ "全部".
+- `frontend/src/components/HomeClient.tsx` `'use client'` leaf — owns state via `useSearchParams` + `router.replace({ scroll: false })`. Tab change clears sub-category. Inline-SVG search-icon placeholder (M5 wires it).
+- `frontend/src/app/page.tsx` server component — `<AppHeader />` + `<Suspense><HomeClient /></Suspense>`.
+- `docs/PROGRESS.md` (M3 row → review, M3 log entry, status snapshot).
+- `docs/AI_JOURNAL.md` (M3 entry).
+
+**Commit / branch.** Branch `main`. Commits `e47bef6` → `8a30be2` → (this commit) all on top of `d57cbfd docs(M2): capture decisions and learnings`.
+
+**Self-checks done.** (Per RR-001 working agreement.)
+- `cd backend && npm run typecheck` → clean
+- `cd backend && npm run build` → clean
+- `cd backend && npm test` → 21/21 passed (no regression from M2)
+- `cd frontend && npx tsc --noEmit` → clean
+- `make types` (with BE running) regenerates `api-types.ts` cleanly; committed file matches fresh generation
+- Smoke (BE on :3001, FE on :3000):
+  - `GET /` → `<html lang="zh-TW">`, `<title>所有捐款項目</title>`, three tab labels (`公益團體` / `捐款專案` / `義賣商品`), default tab=ORG, red header bar visible.
+  - `GET /?tab=CAMPAIGN&subCategory=緊急救援` → URL params drive client state correctly; placeholder text reflects picked tab + sub-category.
+  - `GET /sub-categories?category=ORG` returns 5 items via TanStack Query; dropdown populates.
+  - Tab switch updates URL via `router.replace` and clears sub-category param.
+
+**Risks to focus on.**
+
+1. **Server/client boundary correctness.** Pattern: `app/page.tsx` is server, renders `<AppHeader />` (server) + `<Suspense><HomeClient /></Suspense>` (`'use client'`). Sanity check `useSearchParams` inside `HomeClient` under Suspense is the App Router-supported pattern on this Next.js version, and that `router.replace(..., { scroll: false })` does what we want (no scroll-to-top, no history pollution).
+
+2. **Tailwind v4 token usage.** `bg-(--color-jko)` is v4 arbitrary-value syntax for CSS custom properties. Page renders red at runtime, so the build picks up the token. Confirm the production build doesn't shave it via JIT/purge.
+
+3. **Dropdown UX vs mockup.** Native `<select>` styled with Tailwind — accessibility wins (keyboard nav, screen reader, mobile system picker). Mockup's `全部 ▼` looks custom; if reviewer wants the popover-menu look exactly, swap to Radix Popover.
+
+4. **`staleTime` vs BE `Cache-Control` alignment.** `useSubCategories` 5min vs BE `max-age=300` — same. `useItems` 1min vs BE `max-age=30` — close, slightly skewed toward client. Want a reviewer call on whether to align exactly.
+
+5. **TanStack devtools dev-only.** Gated on `process.env.NODE_ENV === 'development'`. Verify production build doesn't include it (`npm run build && npm start` shouldn't show the devtools button).
+
+6. **Hard Rule 9 compliance.** `rg` the components for hard-coded CJK literals — all visible strings should be `t('key')`.
+
+7. **Server- vs client-side i18n consistency.** `AppHeader` uses `getTranslations` (server-rendered HTML); `Tabs`/`SubCategoryDropdown` use `useTranslations` (client-rendered after hydration). Both should render identical strings — sanity-check by viewing source vs hydrated DOM.
+
+8. **ADR slate freshness.** 0008 (react-window) and 0009 (tab/scroll restore) still `Proposed` — those are M4 and M5 work, correct per Hard Rule 5. Slate is now: 9 accepted technical (0003-0007, 0010-0015) + 2 process (0001/0002) + 2 proposed (0008/0009).
+
+9. **No FE tests yet.** M7. Component shape (server-by-default, client-at-leaf) makes M7 mountable: `<HomeClient />` can be unit-tested with `@testing-library/react` once vitest is wired into the FE workspace.
+
+**Status.** `awaiting-review`

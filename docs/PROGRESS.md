@@ -5,7 +5,7 @@ it current. Format per entry: date, what changed, what's next, blockers.
 
 ## Status snapshot
 
-- **Phase**: M2 complete + hardening pass. **RR-001 `approved`, RR-002 cleared (implicitly approved per Codex's verified-list during the RR-003 reconfirmation), RR-003 `approved`** (round-2 Reconfirmation, 2026-05-03). Ready to start M3 (FE skeleton) on user go-ahead.
+- **Phase**: M3 complete. **RR-004 `awaiting-review`** (FE skeleton). Ready for M4 (card list + virtualized infinite scroll) once Codex approves.
 - **Last updated**: 2026-05-02
 - **Branch**: main (git initialized; baseline commit `4df3baf init`)
 
@@ -18,7 +18,7 @@ Critical-path: M1 → M2 → M3 → M4 → M5 → M6 → M8. Tests (M7) and fina
 | M0  | Repo scaffolding + agent-collab docs                                                                                                     | done     |
 | M1  | BE skeleton: Fastify + TS + Prisma `Item` schema (`category` + `subCategory` enums + nullable category-specific fields) + Postgres + seed (≥90 items, real logos for some) | done    |
 | M2  | API endpoints: `GET /items` (category + subCategory + q + cursor) + `GET /items/:id` + `GET /sub-categories` + Swagger + production hardening (pg_trgm GIN, compress, ETag-deferred, rate-limit with TRUST_PROXY env, request-id) | done     |
-| M3  | FE skeleton: Next.js App Router + Tailwind + `next-intl` (zh-TW) + responsive shell; `/` view with red header + 3 tabs + functional sub-category dropdown | pending |
+| M3  | FE skeleton: Next.js App Router + Tailwind + `next-intl` (zh-TW) + responsive shell; `/` view with red header + 3 tabs + functional sub-category dropdown | review  |
 | M4  | Card list + virtualized infinite scroll (`react-window`) + end-of-list separator                                                         | pending  |
 | M5  | `/search` route: input + abort + debounce + loading + empty + tabbed results + restore-on-cancel                                         | pending  |
 | M6  | `/items/[id]` detail page: category-specific mock fields + back-with-scroll-restore                                                      | pending  |
@@ -68,6 +68,25 @@ Drawn from the brief's submission checklist + our REQUIREMENTS.md §5.G. Each it
 
 - Scaffolded `AGENTS.md`, `CLAUDE.md`, and the `docs/` seven-pack via the `agent-collab-init` skill. Cross-agent review workflow active.
 - Next: align the scaffold to the JKO brief (Phase A) before any code.
+
+### 2026-05-03 — M3 complete: FE skeleton (Next.js + Tailwind + next-intl + TanStack Query + openapi-typescript codegen)
+
+Three-commit milestone (chore/feat/feat) per agreed split:
+
+- **M3-A** `chore(M3): scaffold Next.js + Tailwind v4 + next-intl (zh-TW default)` — `create-next-app` with TS strict + Tailwind + App Router + `src/`. next-intl v4 with single-locale (no URL prefix) + zh-TW + en stub dictionaries. JKO-red Tailwind tokens sampled from mockup. ADR-0007 (next-intl) body filled.
+- **M3-B** `feat(M3): API client + openapi-typescript codegen + TanStack Query wiring` — codegen pipeline (BE zod → OpenAPI spec → openapi-typescript → FE `paths` interface → openapi-fetch typed client). TanStack Query v5 + ReactQueryDevtools (dev-only). `useSubCategories` and `useItems` hooks. Server-default + client-leaf pattern via `Providers` 'use client' wrapper. `make types` regen target. ADR-0014 (TanStack Query) + ADR-0015 (openapi-typescript codegen) written.
+- **M3-C** `feat(M3): / view shell with red header + 3 tabs + functional sub-category dropdown` — AppHeader (server component, JKO-red bar, i18n title), Tabs (client, 3-tab switcher with URL `?tab=` sync, JKO-red underline indicator), SubCategoryDropdown (client, native `<select>` styled with Tailwind, fetches from `/sub-categories?category=`), HomeClient (leaf owning state + URL params), and the page composing them. Search-icon button placeholder (M5 wires it). Card list area placeholder (M4 fills it).
+
+Smoke checks (BE on :3001, FE on :3000):
+- `GET /` → `<html lang="zh-TW">`, `<title>所有捐款項目</title>`, three tab labels rendered (`公益團體` / `捐款專案` / `義賣商品`), red header bar, default tab=ORG.
+- `GET /?tab=CAMPAIGN&subCategory=緊急救援` → URL params drive client state; renders "Active tab: CAMPAIGN · sub-category: 緊急救援" placeholder text.
+- `GET /sub-categories?category=ORG` (via FE devtools query) returns 5 sub-categories from BE; dropdown populates correctly.
+
+Port collision (same as M1's 5432 → 5433 story): on this dev machine port 3000 was held by `frost-template-frontend-1`. Stopped it for the smoke session; `make dev-fe` keeps the convention of port 3000 (so reviewers without that container hit it normally).
+
+ADR slate now: 9 accepted technical (0003-0007, 0010-0015) + 2 process (0001/0002). Way past the brief's "≥3 technical" minimum.
+
+RR-004 written for cross-agent review (per the user's "all meaningful tasks need cross-agent review" rule from the M2 wrap-up).
 
 ### 2026-05-02 — M2 hardening pass: production-scale wiring (RR-003)
 

@@ -302,3 +302,47 @@ framing permanent for any future scope decision on this project.
 - **Module-level env reads block test isolation.** `loadEnv()` at module
   import time caches before tests can mutate. Push env reads into the
   factory function, not the module top.
+
+### 2026-05-03 — M3: FE skeleton (Next.js + TanStack + codegen) — agent: Claude
+
+**Context.** M3 is the FE foundation per REQUIREMENTS §5.A: red-header
+shell with 3 tabs + functional sub-cat dropdown, ready for M4 to fill the
+card list. User picked the stack ahead of time (Next.js + Tailwind +
+next-intl + TanStack Query + openapi-typescript codegen) so this was
+mostly execution + a few real design choices that became ADRs.
+
+**Exchange.** Three decisions worth pinning:
+
+1. *FE↔BE type sharing strategy.* Considered three: hand-redeclare types
+   in FE (drift), shared monorepo package (overkill for flat repo +
+   workspace tooling we don't have), or codegen from the OpenAPI spec
+   (`openapi-typescript`). Picked codegen because the BE already produces
+   `/docs/json` from zod schemas (ADR-0013), so the BE→FE type pipeline
+   has zero hand-maintained step. ADR-0015. Make target `make types`
+   regenerates `frontend/src/lib/api-types.ts` from the running BE.
+
+2. *Server-component default + client-at-leaf pattern.* App Router gives
+   server components by default, but TanStack Query and URL-state hooks
+   must be client. The clean answer: `app/page.tsx` is a server component
+   that renders `<AppHeader />` (server) + `<HomeClient />` ('use client'
+   leaf). All client-only state lives in `HomeClient`; the i18n title
+   ships in the SSR HTML for free.
+
+3. *Cache-Control + FE story coupling.* The BE sets aggressive cache on
+   `/sub-categories` (s-maxage=3600, ADR-0012). TanStack Query's
+   `staleTime: 5min` + the BE Cache-Control means `useSubCategories(category)`
+   is a single network round-trip per category per session. No new cache
+   layer needed in the FE.
+
+**Outcome.** Three M3 commits (chore A → feat B → feat C). Smoke green:
+lang="zh-TW", title from i18n dict, three tab labels visible, URL `?tab=`
+and `?subCategory=` drive state correctly. Port-collision recurrence —
+another project's `frost-template-frontend-1` holds 3000 on this dev
+machine; stopped temporarily for smoke. Kept FE convention on 3000 so
+reviewers without that container get the standard URL.
+
+**Lesson.** The codegen pipeline pays off the moment it exists. FE call
+sites get narrowed return types automatically — no drift surface. The
+manual `make types` step is the only friction; M9 will add a CI check
+(`make types && git diff --exit-code`) so a stale committed types file
+fails the build.
