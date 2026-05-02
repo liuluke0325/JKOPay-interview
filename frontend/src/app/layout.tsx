@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages, getTranslations } from 'next-intl/server';
+import { Providers } from './providers';
 import './globals.css';
 
 const geistSans = Geist({
@@ -39,7 +40,7 @@ export default async function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-zinc-50">
         <NextIntlClientProvider locale={locale} messages={messages}>
-          {children}
+          <Providers>{children}</Providers>
         </NextIntlClientProvider>
       </body>
     </html>

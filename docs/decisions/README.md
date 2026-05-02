@@ -21,6 +21,8 @@ Numbering is monotonic across the folder. Don't reuse numbers even after rejecti
 | 0011 | [`TRUST_PROXY` defaults off; production opts in](0011-trust-proxy-default-off.md) | Accepted |
 | 0012 | [HTTP `Cache-Control` + CDN over Redis hot-read tier](0012-http-cache-vs-redis.md) | Accepted |
 | 0013 | [zod + `fastify-type-provider-zod` single source of truth](0013-zod-single-source-of-truth.md) | Accepted |
+| 0014 | [Frontend data fetching: TanStack Query (with openapi-fetch)](0014-tanstack-query.md) | Accepted |
+| 0015 | [FE↔BE type sharing: openapi-typescript codegen](0015-openapi-typescript-codegen.md) | Accepted |
 
 > Process ADRs (0001/0002) document how we collaborate, not what we build. The assignment's "≥3 technical decisions" requirement is satisfied many times over by 0003 onward.
 
