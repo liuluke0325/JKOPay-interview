@@ -31,9 +31,12 @@ function ItemRow({ index, style, items, ariaAttributes }: RowComponentProps<List
 export function ItemList({
   category,
   subCategory,
+  q,
 }: {
   category: Category;
   subCategory?: string;
+  /** Search query for /search; undefined on /. */
+  q?: string;
 }) {
   const tList = useTranslations('list');
   const tErrors = useTranslations('errors');
@@ -47,6 +50,7 @@ export function ItemList({
   } = useInfiniteItems({
     category,
     subCategory: subCategory || undefined,
+    q: q || undefined,
     limit: 20,
   });
 
