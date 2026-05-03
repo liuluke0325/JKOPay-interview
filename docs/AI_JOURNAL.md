@@ -398,3 +398,58 @@ indexes, materialized views, etc.), the migration tool will keep
 trying to "correct" the drift in the wrong direction. Either fight it
 upstream (ignore-list features as they exist) or change the workflow
 (--create-only review gate).
+
+### 2026-05-03 — M5: /search route + debounce + abort + restore-on-cancel — agent: Claude
+
+**Context.** M5 per REQUIREMENTS §5.B. Search is a dedicated route
+(per the mockup, not an in-place filter on /), with debounced input
+that auto-aborts in-flight requests, and a tab+scroll restore
+round-trip back to / on cancel. ADR-0009 (still Proposed at session
+start) needed its body filled at this milestone per Hard Rule 5.
+
+**Exchange.** Three real decisions:
+
+1. *Storage strategy for the round-trip restore.* Three candidates:
+   - URL only (would mean ?scrollY=1234 leaking into shareable links)
+   - sessionStorage only (refresh on / loses tab — wrong source of truth)
+   - **Hybrid: URL for navigable state (tab, sub-cat), sessionStorage
+     for ephemeral scrollY.** Picked hybrid — refresh on / works,
+     scroll position is always single-use (cleared after restore),
+     no URL ugliness.
+
+2. *Where to scroll-restore.* Two options: (a) /search's 取消 handler
+   calls scrollTo before navigating, (b) HomeClient on / has a mount
+   effect that consumes sessionStorage. Picked (b) because (a) doesn't
+   work — the destination DOM hasn't rendered when the source's
+   handler fires. Trick: react-window doesn't render the right
+   viewport rows until ResizeObserver fires after first paint, so
+   wrapping scrollTo in requestAnimationFrame is needed or
+   react-window snaps back to top.
+
+3. *URL state push location for ?q=.* Initially wrote it as a
+   render-time `if (debouncedQ !== current) router.replace(...)` which
+   is a classic React anti-pattern (state update during render →
+   infinite loop or warning). Moved to useEffect — fires only when
+   debouncedQ actually changes, no render loop.
+
+**Outcome.** Two M5 commits. SSR shell renders correctly with i18n
+strings; BE search returns expected hits; deep links work. Visual
+restore behavior needs a real browser to verify (sessionStorage +
+scrollY) — not curl-testable but the mechanism is correct based on
+M3's URL-state pattern + the ADR design.
+
+**Lesson.** Two carry forward:
+
+- **Always defer scroll restoration with requestAnimationFrame when
+  the destination renders virtualized content.** The virtualizer's
+  measurement runs after first paint; scrolling before that scrolls
+  into rows that don't exist yet and the virtualizer snaps to a sane
+  position (usually top). Generalizes to any Suspense boundary,
+  lazy-loaded section, or data-driven layout.
+
+- **URL-state writes belong in effects, not render bodies.** I caught
+  myself writing `if (a !== b) router.replace(...)` inline. Even when
+  guarded, this triggers a state update during render. Move to
+  useEffect with the value(s) in deps. Rule of thumb: any side effect
+  that calls into router / history / storage from a render path
+  should feel wrong.

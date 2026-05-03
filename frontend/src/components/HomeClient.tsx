@@ -8,6 +8,7 @@ import { SubCategoryDropdown } from './SubCategoryDropdown';
 import { ItemList } from './ItemList';
 import type { Category } from '@/lib/api';
 import { useSubCategories } from '@/lib/queries';
+import { clearRestoreState, loadRestoreState, saveRestoreState } from '@/lib/restore';
 
 // All client-only state lives here so the parent `app/page.tsx` stays
 // a server component. URL `?tab=` and `?subCategory=` are the source
@@ -82,6 +83,42 @@ export function HomeClient() {
     }
   }, [activeSubCategory, subCategoryOptions, pushParams]);
 
+  // Restore scroll position when arriving back from /search (ADR-0009).
+  // Tab + sub-category are already in the URL; only scrollY needs the
+  // sessionStorage detour. Defer with rAF so react-window has a frame
+  // to render the initial overscan window — scrolling before that and
+  // the virtualizer snaps back to top.
+  useEffect(() => {
+    const restore = loadRestoreState();
+    if (!restore || restore.scrollY <= 0) return;
+    if (restore.tab !== activeTab) return; // tab mismatch — stale state
+    requestAnimationFrame(() => {
+      window.scrollTo(0, restore.scrollY);
+      clearRestoreState();
+    });
+    // Mount-only effect — the URL params are the source of truth for
+    // tab/sub-cat. We only want to restore scroll on the entry from
+    // /search, not on every URL change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Search-icon click: snapshot { tab, subCategory, scrollY } before
+  // navigating to /search so cancel can restore. Tab + sub-cat are
+  // also in the URL; sessionStorage holds them too as a single source
+  // of truth for the SearchClient cancel handler.
+  const handleSearchClick = useCallback(() => {
+    saveRestoreState({
+      tab: activeTab,
+      subCategory: activeSubCategory || undefined,
+      scrollY: typeof window !== 'undefined' ? window.scrollY : 0,
+    });
+    // Preserve current tab in /search URL so the search starts in the
+    // same category context the user was browsing.
+    const params = new URLSearchParams();
+    params.set('tab', activeTab);
+    router.push(`/search?${params.toString()}`);
+  }, [activeTab, activeSubCategory, router]);
+
   return (
     <>
       <Tabs active={activeTab} onChange={handleTabChange} />
@@ -92,13 +129,14 @@ export function HomeClient() {
           value={activeSubCategory}
           onChange={handleSubCategoryChange}
         />
-        {/* Search-icon button — wired in M5 to navigate to /search,
-            preserving current tab + scroll for restore-on-cancel. */}
+        {/* Search-icon button — saves { tab, subCategory, scrollY } to
+            sessionStorage and navigates to /search. SearchClient's 取消
+            reads it back on the way home (ADR-0009). */}
         <button
           type="button"
           aria-label={t('search.placeholder')}
-          disabled
-          className="rounded-md p-2 text-zinc-500 hover:bg-zinc-100 disabled:opacity-50"
+          onClick={handleSearchClick}
+          className="rounded-md p-2 text-zinc-500 hover:bg-zinc-100"
         >
           {/* Inline SVG magnifier — no icon dep. */}
           <svg

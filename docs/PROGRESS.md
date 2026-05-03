@@ -5,7 +5,7 @@ it current. Format per entry: date, what changed, what's next, blockers.
 
 ## Status snapshot
 
-- **Phase**: M4 complete + RR-005 `approved` by Codex on first review (no blockers). Ready for M5 (`/search` route) on user go-ahead.
+- **Phase**: M5 complete. **RR-006 `awaiting-review`** (`/search` route + debounce + abort + tab/scroll restore). Ready for M6 (`/items/[id]` detail page) once Codex approves.
 - **Last updated**: 2026-05-02
 - **Branch**: main (git initialized; baseline commit `4df3baf init`)
 
@@ -20,7 +20,7 @@ Critical-path: M1 → M2 → M3 → M4 → M5 → M6 → M8. Tests (M7) and fina
 | M2  | API endpoints: `GET /items` (category + subCategory + q + cursor) + `GET /items/:id` + `GET /sub-categories` + Swagger + production hardening (pg_trgm GIN, compress, ETag-deferred, rate-limit with TRUST_PROXY env, request-id) | done     |
 | M3  | FE skeleton: Next.js App Router + Tailwind + `next-intl` (zh-TW) + responsive shell; `/` view with red header + 3 tabs + functional sub-category dropdown | done    |
 | M4  | Card list + virtualized infinite scroll (`react-window`) + end-of-list separator                                                         | done     |
-| M5  | `/search` route: input + abort + debounce + loading + empty + tabbed results + restore-on-cancel                                         | pending  |
+| M5  | `/search` route: input + abort + debounce + loading + empty + tabbed results + restore-on-cancel                                         | review   |
 | M6  | `/items/[id]` detail page: category-specific mock fields + back-with-scroll-restore                                                      | pending  |
 | M7  | Tests: unit (API + cursor + restore logic) + e2e (scroll, tab switch, search→empty, cancel-restore, detail nav) + ItemList tests (per Codex RR-005: onRowsRendered fetchNextPage trigger near end, no duplicate pages while fetching, empty/error/end-of-list states) | pending  |
 | M8  | Deploy demo: Vercel (FE) + Railway (BE) + Neon (DB)                                                                                      | pending  |
@@ -68,6 +68,30 @@ Drawn from the brief's submission checklist + our REQUIREMENTS.md §5.G. Each it
 
 - Scaffolded `AGENTS.md`, `CLAUDE.md`, and the `docs/` seven-pack via the `agent-collab-init` skill. Cross-agent review workflow active.
 - Next: align the scaffold to the JKO brief (Phase A) before any code.
+
+### 2026-05-03 — M5 complete: /search route + debounce + abort + restore-on-cancel
+
+Two-commit milestone (chore A + feat B):
+
+- **M5-A** `chore(M5): /search route + SearchInput + debounce hook + restore lib + ADR-0009` — building blocks. useDebouncedValue<T>(value, 300ms), restore.ts (sessionStorage helpers per ADR-0009), SearchInput (input + 取消 + magnifier with autoFocus via useEffect), SearchClient ('use client' leaf, ?q= URL sync, tab + ItemList composition), ItemList gains optional q prop, /search/page.tsx server shell. ADR-0009 body filled (hybrid storage: URL for tab/sub-cat, sessionStorage for scrollY).
+- **M5-B** `feat(M5): wire /search end-to-end + restore-on-cancel + scroll restore on / mount` — HomeClient search-icon click → saveRestoreState({tab, subCategory, scrollY}) → router.push('/search?tab=...'). HomeClient mount effect calls loadRestoreState; if scrollY > 0 and tab matches, defers scroll via requestAnimationFrame so react-window has time to render the overscan window first, then clearRestoreState (single-use). SearchClient 取消 reads sessionStorage and pushes back to / with tab + sub-cat preserved.
+
+Smoke (BE :3001, FE :3000):
+- `/search` SSR HTML has lang=zh-TW, title 所有捐款項目, search input, 取消 button, three tab labels.
+- `/search?q=流浪&tab=ORG` deep link renders shell correctly.
+- BE `/items?category=ORG&q=流浪動物` returns 1 hit (`財團法人流浪動物之家基金會`).
+- BE `/items?category=ORG&q=zzzzzzzz` returns 0 items + nextCursor=null → EmptyState path on FE.
+- FE production build clean (3 routes now: `/`, `/search`, `/_not-found`).
+
+Visual verification (browser-only — not curl-testable):
+- Type fast → only one query fires after debounce.
+- TanStack devtools shows previous in-flight queries auto-cancelled when q changes.
+- 取消 → returns to `/?tab=...&subCategory=...` with prior scroll.
+- /search refresh keeps q + tab in URL but clears scroll restoration target (intentional).
+
+ADR slate now: 11 accepted technical (0003-0015) + 2 process (0001/0002) + 0 still-proposed.
+
+RR-006 written for cross-agent review.
 
 ### M5 / polish backlog (per Codex RR-005 forward-looking suggestions)
 

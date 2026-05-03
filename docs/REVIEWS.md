@@ -647,3 +647,61 @@ Files modified in this resolution:
   - Hard Rule 9 spot-check finds zh-TW visible strings in message dictionaries; remaining source matches are comments.
   - Source search finds no raw Prisma SQL or offset pagination in non-migration source.
 - **Verdict.** `approved`
+
+### 2026-05-03 — RR-006 — M5 /search route + debounce + abort + tab/scroll restore — implementer: Claude Code
+
+**Scope.** Implements M5 per REQUIREMENTS §5.B and ADR-0009. Two commits per project convention: building blocks (chore A) + composition (feat B). After this milestone, search-icon button on `/` navigates to a dedicated `/search` route with debounced search input, in-flight request aborts, tabbed results, and tab+scroll restore on cancel back to `/`.
+
+**Files touched.**
+
+*Commit A (`b3265c7`) — chore(M5): scaffolding*
+- `frontend/src/lib/hooks.ts` (NEW) — `useDebouncedValue<T>(value, delay=300)`. Timer cleared on each value change so rapid typing only fires one query at burst end.
+- `frontend/src/lib/restore.ts` (NEW) — `saveRestoreState`/`loadRestoreState`/`clearRestoreState` over `sessionStorage` with single key `jopay:home-restore`. Graceful no-op if storage disabled.
+- `frontend/src/components/SearchInput.tsx` (NEW) — pill-shaped input + 取消 button + inline-SVG magnifier. autoFocus via `useEffect` (App Router-safe). All copy from `search.*` i18n keys.
+- `frontend/src/components/SearchClient.tsx` (NEW) — `'use client'` leaf. Local input state mirrors `?q=` URL param; debounced value flows into URL via `router.replace` in useEffect (effect-not-render to avoid re-render loops). Tab change re-fetches with new category. ItemList consumes debounced q via the new q prop.
+- `frontend/src/components/ItemList.tsx:34-42` — added optional `q` prop; passes through to `useInfiniteItems` (BE API already accepts it from M2). No behavior change for `/`.
+- `frontend/src/app/search/page.tsx` (NEW) — server component shell: `<AppHeader />` + `<Suspense><SearchClient /></Suspense>`.
+- `docs/decisions/0009-tab-scroll-restore.md` — body filled (was Proposed). Hybrid storage strategy documented; status → Accepted.
+- `docs/decisions/README.md` — 0009 status flip.
+
+*Commit B (`<this commit>`) — feat(M5): wire search end-to-end*
+- `frontend/src/components/HomeClient.tsx`:
+  - Search-icon button: was disabled placeholder; now `onClick={handleSearchClick}` saves `{tab, subCategory, scrollY}` to sessionStorage and `router.push('/search?tab=...')`.
+  - New mount-only `useEffect` calls `loadRestoreState()`; if `scrollY > 0` and tab matches, defers `window.scrollTo` via `requestAnimationFrame` so react-window has a frame to render the overscan window first, then `clearRestoreState` (single-use).
+- `docs/PROGRESS.md` — M5 row → review, status snapshot updated, M5 log entry added.
+- `docs/AI_JOURNAL.md` — M5 entry with two carry-forward lessons (rAF-defer for virtualized scroll restore; URL-state writes belong in effects not render).
+
+**Commit / branch.** Branch `main`. Commits land on top of `eb524a5 docs(M4): close RR-005`.
+
+**Self-checks done.** (Per RR-001 working agreement.)
+- `cd frontend && npx tsc --noEmit` → clean
+- `cd frontend && npm run build` → clean (3 routes: `/`, `/_not-found`, `/search`)
+- `cd backend && npm run typecheck` → clean
+- `cd backend && npm run build` → clean
+- `cd backend && npm test` → 21/21 (no BE changes in M5)
+- BE smoke (curl):
+  - `GET /items?category=ORG&q=流浪動物` → 1 hit (`財團法人流浪動物之家基金會`).
+  - `GET /items?category=ORG&q=zzzzzzzz` → 0 items + `nextCursor: null` (EmptyState path).
+- FE smoke (curl SSR'd HTML):
+  - `GET /search` → `<title>所有捐款項目</title>`, search input + 取消 + 3 tab labels.
+  - `GET /search?q=流浪&tab=ORG` → renders chrome correctly.
+
+**Risks to focus on.**
+
+1. **Render-vs-effect anti-pattern in SearchClient (initial bug, fixed).** First cut had `if (debouncedQ !== current) router.replace(...)` inline in render — would have triggered a state-update-during-render warning or infinite loop. Moved to `useEffect`. Worth a sanity check that the current effect-based version has correct deps `[debouncedQ, router, searchParams]` and doesn't itself cause loops.
+
+2. **Mount-only restore effect uses `eslint-disable react-hooks/exhaustive-deps`.** The effect depends on `activeTab` (via the `restore.tab !== activeTab` check) but I want it to fire only on mount, not on every URL change. Disabled the exhaustive-deps lint with an inline comment. Want a sanity check that this is the right shape vs e.g. a `useRef` flag for "first mount."
+
+3. **Restore depends on the destination DOM being mounted.** `requestAnimationFrame` defer should give react-window enough time, but only one frame. If the list has slow async data (cold cache, network slow) the rAF fires before rows mount and `scrollTo` lands in unrendered space. M4 polish backlog suggests EndOfListSeparator move into the virtualized list as a footer row — same family of "lay out before you scroll" concern. Worth a real-browser test rather than just static smoke.
+
+4. **`/search` uses Tabs but not SubCategoryDropdown.** Per mockup screenshots 3 + 4 (search-with-results and search-empty), only tabs render under the search input — no sub-cat dropdown. Confirmed against the mockup. Worth a sanity check.
+
+5. **Hard Rule 9 spot-check.** All visible strings in SearchInput / SearchClient flow through `useTranslations('search')` keys. Worth `rg`-ing the new components for any literal CJK that slipped in.
+
+6. **`?q=` URL pollution.** Each debounced query update calls `router.replace`. If the user types fast, that's still 1 replace per debounce window (300ms), not 1 per keystroke. Worth confirming the URL doesn't churn excessively under fast typing.
+
+7. **Search-icon button styling change.** Was `disabled` with `opacity-50`; now interactive without disabled state. If anywhere else relied on that disabled visual cue, update.
+
+8. **No FE tests yet.** M7. SearchClient has more state branches than ItemList (URL sync + restore round-trip + tab change inside search); M7 should cover at minimum: debounce fires once for fast typing, abort cancels on rapid filter change, cancel button restores tab + sub-cat, deep-link `?q=` populates input.
+
+**Status.** `awaiting-review`
