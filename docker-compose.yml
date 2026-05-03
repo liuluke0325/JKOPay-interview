@@ -8,9 +8,14 @@ services:
       POSTGRES_PASSWORD: jopay
       POSTGRES_DB: jopay
     ports:
-      # Host 5433 → container 5432. Host port shifted because another local
-      # Postgres (e.g. another project's docker) commonly squats on 5432.
-      - "5433:5432"
+      # Host 5433 → container 5432, bound to loopback only. Host port
+      # shifted because another local Postgres (e.g. another project's
+      # docker) commonly squats on 5432. Loopback binding keeps the
+      # demo credential (POSTGRES_PASSWORD above) inert against the
+      # LAN — only this machine can reach the container. GitGuardian
+      # flagged the in-file password; with this bind the credential
+      # has no exposure surface beyond localhost.
+      - "127.0.0.1:5433:5432"
     volumes:
       - jopay-postgres-data:/var/lib/postgresql/data
     healthcheck:
