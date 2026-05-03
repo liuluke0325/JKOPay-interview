@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { BackChevron } from './BackChevron';
 
 // `<` chevron in the header on `/items/[id]`. `router.back()` returns
 // the user to whatever was previously on the history stack — usually
@@ -22,9 +23,9 @@ export function BackButton() {
       type="button"
       onClick={() => router.back()}
       aria-label={t('back')}
-      className="text-lg leading-none transition-opacity hover:opacity-80"
+      className="transition-opacity hover:opacity-80"
     >
-      {'<'}
+      <BackChevron className="h-7 w-7" />
     </button>
   );
 }

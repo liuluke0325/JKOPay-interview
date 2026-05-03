@@ -1,5 +1,6 @@
 import { getTranslations } from 'next-intl/server';
 import type { ReactNode } from 'react';
+import { BackChevron } from './BackChevron';
 
 // Server component — title comes from the i18n dictionary at request
 // time. Mockup shows the title centered on a JKO-red bar with a back
@@ -21,7 +22,7 @@ export async function AppHeader({
       <div className="mx-auto flex max-w-3xl items-center px-4 py-4">
         <span className="flex w-5 items-center text-lg leading-none">
           {leadingSlot ?? (
-            <span aria-hidden>{'<'}</span>
+            <BackChevron className="h-7 w-7" />
           )}
         </span>
         <h1 className="flex-1 text-center text-2xl font-bold">{headerTitle}</h1>

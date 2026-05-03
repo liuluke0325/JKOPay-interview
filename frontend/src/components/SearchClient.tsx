@@ -124,9 +124,11 @@ export function SearchClient() {
 
   return (
     <>
-      <SearchInput value={inputValue} onChange={setInputValue} onCancel={handleCancel} />
+      <div className="bg-white">
+        <SearchInput value={inputValue} onChange={setInputValue} onCancel={handleCancel} />
+      </div>
       <Tabs active={activeTab} onChange={handleTabChange} />
-      <section className="mx-auto flex w-full max-w-3xl flex-1 flex-col min-h-0">
+      <section className="mx-auto flex w-full max-w-3xl flex-1 flex-col min-h-0 bg-[#f2f2f5]">
         <ItemList category={activeTab} q={debouncedQ || undefined} />
       </section>
     </>
