@@ -3,8 +3,9 @@
 Demo deployment is mandatory per the brief (Hard Rule 6). This runbook
 gets a fresh checkout from `git clone` to a live demo URL in under an
 hour using **Railway-only** for all three tiers (DB + BE + FE) in a
-single project. Every step uses Railway's GitHub-import path — no
-Docker, no platform-specific config files in the repo.
+single project. BE and FE deploy from **Dockerfiles in the repo** —
+Railway auto-detects them on import, so no Build/Start command tweaking
+in the platform UI.
 
 Topology (one Railway project, three services):
 
@@ -66,12 +67,10 @@ across three providers.
    `JKOPay-interview`.
 2. Settings (Service → Settings tab):
    - **Root Directory**: `backend`
-   - **Build Command**: `npm install && npm run build`
-     (the `build` script runs `prisma generate && tsc`, so the
-     deployed bundle ships with a generated Prisma client)
-   - **Start Command**: `npm run start:prod`
-     (runs `prisma migrate deploy` then `node dist/server.js`, so the
-     schema reconciles before traffic is accepted on every deploy)
+   - Railway auto-detects [`backend/Dockerfile`](../backend/Dockerfile) and
+     uses it. **Leave Build / Start Commands blank** — the Dockerfile
+     defines them (multi-stage build → `npm run start:prod` as `CMD`,
+     which runs `prisma migrate deploy` then `node dist/server.js`).
 3. Variables tab:
    | Key | Value |
    | --- | --- |
@@ -85,9 +84,10 @@ across three providers.
    | `LOG_LEVEL` | `info` |
    `PORT` is **injected by Railway** — do not set it. `PUBLIC_BASE_URL`
    can stay unset (only used to render Swagger's server URL).
-4. Deploy. Watch the build log: `prisma generate` → `tsc` →
-   `prisma migrate deploy` → Fastify boot. The line `🚀 Server listening on 0.0.0.0:<port>`
-   confirms success.
+4. Deploy. Watch the build log: Docker stages `deps` → `builder`
+   (`prisma generate` + `tsc`) → `runner` (prod-only `npm install`).
+   Then runtime: `prisma migrate deploy` → Fastify boot. The line
+   `🚀 Server listening on 0.0.0.0:<port>` confirms success.
 5. **Settings → Networking → Generate Domain**. Copy the
    `https://<...>.up.railway.app` URL — used in §3.
 6. Smoke check from your laptop:
@@ -111,12 +111,17 @@ across three providers.
 1. Same project → **New → GitHub Repo** → pick `JKOPay-interview` again.
 2. Settings:
    - **Root Directory**: `frontend`
-   - **Build Command**: `npm install && npm run build` (default)
-   - **Start Command**: `npm start` (default — runs `next start`)
+   - Railway auto-detects [`frontend/Dockerfile`](../frontend/Dockerfile) — leave
+     Build / Start Commands blank. The Dockerfile uses Next.js's
+     `output: 'standalone'` (set in [next.config.ts](../frontend/next.config.ts))
+     to produce a slim runner image: ~91 MB compressed, no full
+     `node_modules` at runtime.
 3. Variables tab:
    - `NEXT_PUBLIC_API_BASE_URL` = the BE Railway URL from §2.5
-     (no trailing slash). The `NEXT_PUBLIC_` prefix exposes it to the
-     browser; the openapi-fetch client picks it up at request time.
+     (no trailing slash). The `NEXT_PUBLIC_` prefix bakes it into the
+     client bundle **at build time** — Railway re-runs `next build`
+     whenever this var changes, so set it before first deploy and
+     re-deploy after any change.
 4. Deploy. Wait for the green checkmark.
 5. **Generate Domain** for the FE service too. Open the URL — the
    home page should render with three tabs and the org list. Tap a
