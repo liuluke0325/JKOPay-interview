@@ -24,7 +24,7 @@ export async function AppHeader({
             <span aria-hidden>{'<'}</span>
           )}
         </span>
-        <h1 className="flex-1 text-center text-lg font-semibold">{headerTitle}</h1>
+        <h1 className="flex-1 text-center text-2xl font-bold">{headerTitle}</h1>
         {/* Spacer to balance the leading column on the left. */}
         <span aria-hidden className="w-5" />
       </div>

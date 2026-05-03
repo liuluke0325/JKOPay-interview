@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useFormatter, useTranslations } from 'next-intl';
 import { useItem } from '@/lib/queries';
 import type { ItemDetail as ItemDetailData } from '@/lib/api';
+import { LoadingIcon } from './LoadingIcon';
 
 // Detail page body. Lives under <Suspense> in `app/items/[id]/page.tsx`;
 // the suspense boundary handles the initial async params resolution
@@ -34,10 +35,7 @@ export function ItemDetail({ id }: { id: string }) {
         aria-label={t('loading')}
         className="flex flex-1 items-center justify-center py-16"
       >
-        <span
-          aria-hidden
-          className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-zinc-300 border-t-(--color-jko)"
-        />
+        <LoadingIcon />
       </div>
     );
   }

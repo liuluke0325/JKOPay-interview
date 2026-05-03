@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(RATE_LIMIT_MAX=2 RATE_LIMIT_WINDOW='10 seconds' npm run dev)",
+      "Bash(curl -s -o /dev/null -w '%{http_code}' -H 'X-Forwarded-For: __TRACKED_VAR__' 'http://localhost:3001/sub-categories?category=ORG')",
+      "Bash(RATE_LIMIT_MAX=2 RATE_LIMIT_WINDOW='10 seconds' TRUST_PROXY=true npm run dev)",
+      "Bash(python3 -c ' *)",
+      "Bash(python3 -c \"print\\('a'*200\\)\")",
+      "Bash(curl -s -D - -o /dev/null -H 'X-Request-Id: __TRACKED_VAR__' http://localhost:3001/health)",
+      "Bash(curl -s -o /dev/null -w '/health: %{http_code}\\\\n' http://localhost:3001/health)",
+      "Bash(curl -s -o /dev/null -w '/sub-categories?category=ORG: %{http_code}\\\\n' 'http://localhost:3001/sub-categories?category=ORG')",
+      "Bash(curl -s -o /dev/null -w '/items?category=ORG&limit=5: %{http_code}\\\\n' 'http://localhost:3001/items?category=ORG&limit=5')",
+      "Bash(npx vitest *)",
+      "Bash(TRUST_PROXY=not-a-cidr npm run dev)",
+      "Bash(TRUST_PROXY=\"10.0.0.0/8,127.0.0.1\" timeout 3 npm run dev)",
+      "Bash(curl -s -o /dev/null -w '/docs/json: %{http_code}\\\\n' 'http://localhost:3001/docs/json')",
+      "Bash(curl -s -D - -o /dev/null http://localhost:3001/health)",
+      "Bash(curl -s -D - -o /dev/null 'http://localhost:3001/sub-categories?category=ORG')",
+      "Bash(git ls-tree *)",
+      "Bash(git commit -m ' *)",
+      "Bash(npx create-next-app@latest frontend --typescript --tailwind --app --src-dir --import-alias \"@/*\" --eslint --use-npm --no-turbopack --yes)",
+      "Bash(npx tsc *)",
+      "Bash(curl -sf http://localhost:3000)",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(docker stop *)",
+      "Bash(npx openapi-typescript *)",
+      "Bash(npm run *)",
+      "Bash(pkill -f \"tsx.*src/server.ts\")",
+      "Bash(curl -s 'http://localhost:3000/')",
+      "Bash(curl -s 'http://localhost:3000/?tab=CAMPAIGN&subCategory=%E7%B7%8A%E6%80%A5%E6%95%91%E6%8F%B4')",
+      "Bash(curl -s http://localhost:3000/)",
+      "Bash(curl -s -o /dev/null -w \"BE 400 expected: %{http_code}\\\\n\" 'http://localhost:3001/items?category=CAMPAIGN&subCategory=%E5%8B%95%E7%89%A9%E4%BF%9D%E8%AD%B7')",
+      "Bash(grep -n 'awaiting-reconfirmation\\\\|Reviewer: Codex CLI — 2026-05-03 — Reconfirmation$' docs/REVIEWS.md)",
+      "Bash(npm uninstall *)",
+      "Bash(curl -s 'http://localhost:3001/items?category=ORG&subCategory=%E5%8B%95%E7%89%A9%E4%BF%9D%E8%AD%B7&limit=20')"
+    ],
+    "additionalDirectories": [
+      "/Users/lukeliu"
+    ]
+  }
+}

@@ -147,7 +147,7 @@ export function HomeClient() {
     <>
       <Tabs active={activeTab} onChange={handleTabChange} />
 
-      <div className="mx-auto flex w-full max-w-3xl items-center justify-between px-4 py-3">
+      <div className="mx-auto flex w-full max-w-3xl items-center justify-between bg-[#f2f2f5] px-4 py-5">
         <SubCategoryDropdown
           category={activeTab}
           value={activeSubCategory}
@@ -160,7 +160,7 @@ export function HomeClient() {
           type="button"
           aria-label={t('search.placeholder')}
           onClick={handleSearchClick}
-          className="rounded-md p-2 text-zinc-500 hover:bg-zinc-100"
+          className="rounded-full bg-[#e9e9ef] p-4 text-zinc-500 hover:bg-[#e2e2e8]"
         >
           {/* Inline SVG magnifier — no icon dep. */}
           <svg
@@ -171,7 +171,7 @@ export function HomeClient() {
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="h-5 w-5"
+            className="h-7 w-7"
           >
             <circle cx="11" cy="11" r="7" />
             <path d="m20 20-3.5-3.5" />
@@ -182,7 +182,7 @@ export function HomeClient() {
       {/* Card list area — virtualized via react-window (ADR-0008).
           ItemList owns its own loading/empty/error states + infinite-
           scroll pagination via TanStack useInfiniteQuery (ADR-0014). */}
-      <section className="mx-auto flex w-full max-w-3xl flex-1 flex-col min-h-0">
+      <section className="mx-auto flex w-full max-w-3xl flex-1 flex-col min-h-0 bg-[#f2f2f5]">
         <ItemList
           category={activeTab}
           subCategory={activeSubCategory || undefined}

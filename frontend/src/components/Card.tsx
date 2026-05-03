@@ -24,9 +24,9 @@ export function Card({ item }: { item: Item }) {
     <Link
       href={`/items/${item.id}`}
       data-item-id={item.id}
-      className="flex h-full items-center gap-3 border-b border-zinc-100 px-4 py-3 transition-colors hover:bg-zinc-50 focus:bg-zinc-50 focus:outline-none"
+      className="mx-4 my-2 flex h-[calc(100%-1rem)] items-center gap-4 rounded-2xl bg-white px-5 py-3 transition-colors hover:bg-white/90 focus:bg-white/90 focus:outline-none"
     >
-      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md bg-zinc-50">
+      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white">
         <Image
           src={item.logoUrl}
           alt=""
@@ -39,8 +39,8 @@ export function Card({ item }: { item: Item }) {
         />
       </div>
       <div className="min-w-0 flex-1">
-        <h3 className="truncate text-sm font-semibold text-zinc-900">{item.title}</h3>
-        <p className="line-clamp-2 text-xs text-zinc-500">{item.description}</p>
+        <h3 className="truncate text-sm font-semibold text-zinc-950">{item.title}</h3>
+        <p className="line-clamp-2 text-xs text-zinc-600">{item.description}</p>
       </div>
     </Link>
   );

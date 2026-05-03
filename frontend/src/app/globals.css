@@ -1,11 +1,10 @@
 @import "tailwindcss";
 
-/* JKO brand red — sampled from the mockup header. Slight desaturation
-   from pure Tailwind red-600 (#dc2626) to match the brand more closely. */
+/* JKO brand red — matched to the Figma header rather than Tailwind red. */
 :root {
-  --color-jko-red: #d62828;
-  --color-jko-red-dark: #b91c1c;
-  --background: #ffffff;
+  --color-jko-red: #d4141c;
+  --color-jko-red-dark: #b80f17;
+  --background: #f2f2f5;
   --foreground: #171717;
 }
 

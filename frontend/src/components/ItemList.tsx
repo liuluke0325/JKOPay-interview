@@ -8,19 +8,32 @@ import type { Category, Item } from '@/lib/api';
 import { Card, CARD_HEIGHT_PX } from './Card';
 import { EndOfListSeparator } from './EndOfListSeparator';
 import { EmptyState } from './EmptyState';
+import { LoadingIcon } from './LoadingIcon';
 
 // Number of rows from the end at which we prefetch the next page.
 // Slightly bigger than one viewport so the user shouldn't see a loader
 // at the bottom under normal scrolling speed.
 const PREFETCH_OFFSET = 5;
 
-type ListRowProps = { items: Item[] };
+type ListRowProps = { items: Item[]; showEndOfList: boolean };
 
 // Row component contract from react-window v2: receives `index`, `style`,
 // `ariaAttributes` from the List, plus whatever we pass via `rowProps`.
-function ItemRow({ index, style, items, ariaAttributes }: RowComponentProps<ListRowProps>) {
+function ItemRow({
+  index,
+  style,
+  items,
+  showEndOfList,
+  ariaAttributes,
+}: RowComponentProps<ListRowProps>) {
   const item = items[index];
-  if (!item) return null;
+  if (!item && showEndOfList) {
+    return (
+      <div style={style} {...ariaAttributes}>
+        <EndOfListSeparator />
+      </div>
+    );
+  }
   return (
     <div style={style} {...ariaAttributes}>
       <Card item={item} />
@@ -60,6 +73,8 @@ export function ItemList({
 
   // Flatten paged items for the virtualizer.
   const items = data?.pages.flatMap((page) => page.items) ?? [];
+  const showEndOfList = !hasNextPage;
+  const rowCount = items.length + (showEndOfList ? 1 : 0);
 
   // react-window v2 onRowsRendered: prefetch when we're within
   // PREFETCH_OFFSET rows of the end and there are more pages to load.
@@ -83,7 +98,7 @@ export function ItemList({
         aria-label={tList('loading')}
         className="flex flex-1 items-center justify-center py-16"
       >
-        <Spinner />
+        <LoadingIcon />
       </div>
     );
   }
@@ -108,9 +123,9 @@ export function ItemList({
       <div className="flex-1 min-h-0">
         <List
           rowComponent={ItemRow}
-          rowCount={items.length}
+          rowCount={rowCount}
           rowHeight={CARD_HEIGHT_PX}
-          rowProps={{ items }}
+          rowProps={{ items, showEndOfList }}
           onRowsRendered={handleRowsRendered}
           overscanCount={4}
           defaultHeight={600}
@@ -118,16 +133,6 @@ export function ItemList({
           listRef={listRef}
         />
       </div>
-      {!hasNextPage && <EndOfListSeparator />}
     </div>
-  );
-}
-
-function Spinner() {
-  return (
-    <span
-      aria-hidden
-      className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-zinc-300 border-t-(--color-jko)"
-    />
   );
 }

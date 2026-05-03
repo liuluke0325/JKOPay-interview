@@ -20,7 +20,7 @@ export function Tabs({
   };
 
   return (
-    <div role="tablist" className="border-b border-zinc-200 bg-white">
+    <div role="tablist" className="bg-white">
       <div className="mx-auto flex max-w-3xl">
         {TAB_ORDER.map((category) => {
           const isActive = category === active;
@@ -32,15 +32,15 @@ export function Tabs({
               tabIndex={isActive ? 0 : -1}
               onClick={() => onChange(category)}
               className={[
-                'relative flex-1 px-4 py-3 text-sm font-medium transition-colors',
-                isActive ? 'text-zinc-900' : 'text-zinc-500 hover:text-zinc-700',
+                'relative flex-1 px-4 py-5 text-lg font-semibold transition-colors',
+                isActive ? 'text-zinc-950' : 'text-zinc-500 hover:text-zinc-700',
               ].join(' ')}
             >
               {t(labelKey[category])}
               {isActive && (
                 <span
                   aria-hidden
-                  className="absolute inset-x-4 -bottom-px h-0.5 rounded bg-(--color-jko)"
+                  className="absolute inset-x-8 bottom-0 h-1 rounded-t bg-(--color-jko)"
                 />
               )}
             </button>

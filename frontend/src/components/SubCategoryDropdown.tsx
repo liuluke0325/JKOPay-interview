@@ -30,8 +30,8 @@ export function SubCategoryDropdown({
         disabled={isPending || isError}
         aria-label={t('allLabel')}
         className={[
-          'appearance-none rounded-md border border-zinc-300 bg-white py-1.5 pl-3 pr-8 text-sm',
-          'text-zinc-700 focus:border-(--color-jko) focus:outline-none focus:ring-1 focus:ring-(--color-jko)',
+          'appearance-none rounded-xl border-0 bg-[#e9e9ef] py-3 pl-5 pr-11 text-lg font-semibold',
+          'text-zinc-700 focus:outline-none focus:ring-2 focus:ring-(--color-jko)',
           'disabled:opacity-50',
         ].join(' ')}
       >
@@ -46,7 +46,7 @@ export function SubCategoryDropdown({
           ship a separate icon dep. */}
       <span
         aria-hidden
-        className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-zinc-500"
+        className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm text-zinc-400"
       >
         ▼
       </span>
