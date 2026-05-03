@@ -8,6 +8,14 @@
 # Install ALL dependencies (incl. dev) for the build stage.
 FROM node:22-bookworm-slim AS deps
 WORKDIR /app
+# Prisma's query engine and CLI both link against OpenSSL at runtime.
+# `node:22-bookworm-slim` strips the openssl package out of the base
+# image, so Prisma can't detect the version and warns "Defaulting to
+# openssl-1.1.x" — which then misses Bookworm's actual openssl-3.0.
+# Installing it here (and in the runner stage below) makes Prisma's
+# auto-detection happy on both build-time `prisma generate` and
+# runtime `prisma migrate deploy`.
+RUN apt-get update -y && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json ./
 RUN npm install --no-audit --no-fund
 
@@ -26,6 +34,8 @@ RUN npm run build
 FROM node:22-bookworm-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+# OpenSSL for Prisma's runtime query engine (see deps stage comment).
+RUN apt-get update -y && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 # Re-install only production deps so the image doesn't ship vitest etc.
 COPY package.json package-lock.json ./
 RUN npm install --no-audit --no-fund --omit=dev && npm cache clean --force
