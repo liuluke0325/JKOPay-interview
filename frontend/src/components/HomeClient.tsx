@@ -2,21 +2,25 @@
 
 import { useTranslations } from 'next-intl';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ListImperativeAPI } from 'react-window';
 import { Tabs } from './Tabs';
 import { SubCategoryDropdown } from './SubCategoryDropdown';
 import { ItemList } from './ItemList';
 import type { Category } from '@/lib/api';
 import { useSubCategories } from '@/lib/queries';
-import { clearRestoreState, loadRestoreState, saveRestoreState } from '@/lib/restore';
+import { consumeRestoreState, saveRestoreState } from '@/lib/restore';
 
 // All client-only state lives here so the parent `app/page.tsx` stays
 // a server component. URL `?tab=` and `?subCategory=` are the source
 // of truth for both — initial render reads them; user actions push new
 // URLs and React re-renders.
 //
-// M4 fills the empty card-list area below this with the virtualized
-// list. M5 wires the magnifier-icon button to navigate to /search.
+// Card list area (M4) is the virtualized <ItemList />. Search-icon
+// button (M5) saves the current { tab, subCategory, scrollY } to
+// sessionStorage and navigates to /search. Mount effect consumes
+// sessionStorage to restore scroll position when arriving back from
+// /search via cancel.
 
 const VALID_CATEGORIES = new Set<Category>(['ORG', 'CAMPAIGN', 'MERCHANDISE']);
 
@@ -83,47 +87,67 @@ export function HomeClient() {
     }
   }, [activeSubCategory, subCategoryOptions, pushParams]);
 
+  // The card list owns the actual scroll container (react-window's
+  // <List> internal scroller — body is height-bounded so window.scrollY
+  // is always 0). We hold the imperative API in state so we can both:
+  //   - read `element.scrollTop` on search-icon click (save)
+  //   - apply a saved scrollTop once the list mounts (restore)
+  const [listApi, setListApi] = useState<ListImperativeAPI | null>(null);
+
   // Restore scroll position when arriving back from /search (ADR-0009).
-  // Tab + sub-category are already in the URL; only scrollY needs the
-  // sessionStorage detour. Defer with rAF so react-window has a frame
-  // to render the initial overscan window — scrolling before that and
-  // the virtualizer snaps back to top.
+  // Atomic consume on mount stashes the offset in a ref; the listApi
+  // effect below applies it once the List has mounted (the ref is
+  // populated async after react-window measures its parent).
+  const pendingScrollTop = useRef<number | null>(null);
   useEffect(() => {
-    const restore = loadRestoreState();
+    const restore = consumeRestoreState();
     if (!restore || restore.scrollY <= 0) return;
     if (restore.tab !== activeTab) return; // tab mismatch — stale state
-    requestAnimationFrame(() => {
-      window.scrollTo(0, restore.scrollY);
-      clearRestoreState();
-    });
+    pendingScrollTop.current = restore.scrollY;
     // Mount-only effect — the URL params are the source of truth for
     // tab/sub-cat. We only want to restore scroll on the entry from
     // /search, not on every URL change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Once the List's imperative API is attached, apply any pending
+  // scroll. Defer with rAF so react-window has rendered its initial
+  // overscan window — scrolling before that and the virtualizer snaps
+  // back to top.
+  useEffect(() => {
+    if (!listApi) return;
+    const target = pendingScrollTop.current;
+    if (target === null) return;
+    pendingScrollTop.current = null; // single-use
+    requestAnimationFrame(() => {
+      const el = listApi.element;
+      if (el) el.scrollTop = target;
+    });
+  }, [listApi]);
+
   // Search-icon click: snapshot { tab, subCategory, scrollY } before
-  // navigating to /search so cancel can restore. Tab + sub-cat are
-  // also in the URL; sessionStorage holds them too as a single source
-  // of truth for the SearchClient cancel handler.
+  // navigating to /search so cancel can restore. scrollY here is the
+  // List element's scrollTop (not window.scrollY) — body is height-
+  // bounded and the List internal-scrolls.
   const handleSearchClick = useCallback(() => {
+    const scrollTop = listApi?.element?.scrollTop ?? 0;
     saveRestoreState({
       tab: activeTab,
       subCategory: activeSubCategory || undefined,
-      scrollY: typeof window !== 'undefined' ? window.scrollY : 0,
+      scrollY: scrollTop,
     });
     // Preserve current tab in /search URL so the search starts in the
     // same category context the user was browsing.
     const params = new URLSearchParams();
     params.set('tab', activeTab);
     router.push(`/search?${params.toString()}`);
-  }, [activeTab, activeSubCategory, router]);
+  }, [activeTab, activeSubCategory, listApi, router]);
 
   return (
     <>
       <Tabs active={activeTab} onChange={handleTabChange} />
 
-      <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
+      <div className="mx-auto flex w-full max-w-3xl items-center justify-between px-4 py-3">
         <SubCategoryDropdown
           category={activeTab}
           value={activeSubCategory}
@@ -158,8 +182,12 @@ export function HomeClient() {
       {/* Card list area — virtualized via react-window (ADR-0008).
           ItemList owns its own loading/empty/error states + infinite-
           scroll pagination via TanStack useInfiniteQuery (ADR-0014). */}
-      <section className="mx-auto flex w-full max-w-3xl flex-1 flex-col">
-        <ItemList category={activeTab} subCategory={activeSubCategory || undefined} />
+      <section className="mx-auto flex w-full max-w-3xl flex-1 flex-col min-h-0">
+        <ItemList
+          category={activeTab}
+          subCategory={activeSubCategory || undefined}
+          listRef={setListApi}
+        />
       </section>
     </>
   );

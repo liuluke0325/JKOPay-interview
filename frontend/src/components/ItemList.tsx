@@ -2,7 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { useCallback } from 'react';
-import { List, type RowComponentProps } from 'react-window';
+import { List, type ListImperativeAPI, type RowComponentProps } from 'react-window';
 import { useInfiniteItems } from '@/lib/queries';
 import type { Category, Item } from '@/lib/api';
 import { Card, CARD_HEIGHT_PX } from './Card';
@@ -32,11 +32,15 @@ export function ItemList({
   category,
   subCategory,
   q,
+  listRef,
 }: {
   category: Category;
   subCategory?: string;
   /** Search query for /search; undefined on /. */
   q?: string;
+  /** Optional ref-callback so the parent can read/write the List's
+   *  internal scrollTop (used by HomeClient for ADR-0009 restore). */
+  listRef?: (api: ListImperativeAPI | null) => void;
 }) {
   const tList = useTranslations('list');
   const tErrors = useTranslations('errors');
@@ -97,7 +101,7 @@ export function ItemList({
   }
 
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="flex flex-1 flex-col min-h-0">
       {/* react-window measures its parent container via ResizeObserver
           (v2 behavior), so the wrapper must be a sized flex child for
           the list to fill the remaining viewport height. */}
@@ -111,6 +115,7 @@ export function ItemList({
           overscanCount={4}
           defaultHeight={600}
           style={{ height: '100%' }}
+          listRef={listRef}
         />
       </div>
       {!hasNextPage && <EndOfListSeparator />}

@@ -12,7 +12,11 @@ const STORAGE_KEY = 'jopay:home-restore';
 export type RestoreState = {
   /** Active category tab on `/` at the time of navigation. */
   tab: string;
-  /** window.scrollY at the time of navigation. */
+  /** Scroll offset of the card list at the time of navigation. The
+   *  page body is height-bounded (so window.scrollY is always 0); the
+   *  card list owns the actual scroll container via react-window's
+   *  internal `<List>` scroller. This is its `element.scrollTop`. The
+   *  field name `scrollY` is kept for sessionStorage compatibility. */
   scrollY: number;
   /** Sub-category filter active on `/`, if any. Restored alongside tab. */
   subCategory?: string;
@@ -53,4 +57,22 @@ export function clearRestoreState(): void {
   } catch {
     // No-op — see saveRestoreState comment.
   }
+}
+
+/**
+ * Atomic load + clear. Use this from any consumer (HomeClient mount,
+ * SearchClient cancel) so restore state is **truly single-use** and
+ * can never survive a no-op path. Without this, the original code had
+ * a leak: if HomeClient mounted with the restore but the early-return
+ * conditions hit (scrollY <= 0 or tab mismatch), the key persisted in
+ * sessionStorage and could be misread by a later cancel from a
+ * direct-visit `/search`. (Codex caught this in RR-006.)
+ *
+ * The contract: read = consume. If you load it, you've used it; the
+ * key is gone. Never returns the same record twice.
+ */
+export function consumeRestoreState(): RestoreState | null {
+  const state = loadRestoreState();
+  clearRestoreState();
+  return state;
 }

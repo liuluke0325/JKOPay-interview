@@ -22,7 +22,7 @@ Critical-path: M1 → M2 → M3 → M4 → M5 → M6 → M8. Tests (M7) and fina
 | M4  | Card list + virtualized infinite scroll (`react-window`) + end-of-list separator                                                         | done     |
 | M5  | `/search` route: input + abort + debounce + loading + empty + tabbed results + restore-on-cancel                                         | review   |
 | M6  | `/items/[id]` detail page: category-specific mock fields + back-with-scroll-restore                                                      | pending  |
-| M7  | Tests: unit (API + cursor + restore logic) + e2e (scroll, tab switch, search→empty, cancel-restore, detail nav) + ItemList tests (per Codex RR-005: onRowsRendered fetchNextPage trigger near end, no duplicate pages while fetching, empty/error/end-of-list states) | pending  |
+| M7  | Tests: unit (API + cursor + restore logic) + e2e (scroll, tab switch, search→empty, cancel-restore, detail nav) + ItemList tests (per Codex RR-005: onRowsRendered fetchNextPage trigger near end, no duplicate pages while fetching, empty/error/end-of-list states) + SearchClient tests (per Codex RR-006: debounce-then-URL sync, AbortSignal propagation across rapid q changes, cancel restore happy + stale paths, deep-link `?q=` populates input, browser back/forward syncs input from URL, `consumeRestoreState` atomic clear)                          | pending  |
 | M8  | Deploy demo: Vercel (FE) + Railway (BE) + Neon (DB)                                                                                      | pending  |
 | M9  | Final prep: README (incl. AI 使用聲明) + ADR bodies (0003–0009) + rename `docs/AI_JOURNAL.md` → `docs/prompts/`                          | pending  |
 

@@ -25,7 +25,7 @@ export function SearchInput({
   }, [autoFocus]);
 
   return (
-    <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
+    <div className="flex max-w-3xl items-center gap-3 px-4 py-3">
       <div className="relative flex-1">
         <span
           aria-hidden
