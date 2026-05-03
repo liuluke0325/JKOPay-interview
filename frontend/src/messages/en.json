@@ -30,6 +30,7 @@
     "raised": "Raised",
     "goal": "Goal",
     "deadline": "Deadline",
+    "deadlineRow": "Deadline: {date}",
     "price": "Price",
     "stock": "Stock",
     "back": "Back"

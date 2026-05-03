@@ -12,7 +12,8 @@ import { api, type Category } from './api';
 // stale window has the best chance of serving from the CDN edge cache
 // rather than hitting origin.
 const STALE_SUB_CATEGORIES_MS = 5 * 60 * 1000; // BE: max-age=300, s-maxage=3600
-const STALE_ITEMS_MS = 30 * 1000; // BE: max-age=30, s-maxage=60
+const STALE_ITEMS_MS = 30 * 1000; // BE: /items max-age=30, s-maxage=60
+const STALE_ITEM_DETAIL_MS = 60 * 1000; // BE: /items/:id max-age=60, s-maxage=300
 
 /**
  * Sub-categories for the `全部 ▼` dropdown. The backend response is
@@ -75,7 +76,8 @@ export function useItems(args: {
  * Single item by id — drives the `/items/[id]` detail page. Cached
  * under the `['item', id]` key so navigating between detail pages
  * keeps the previously-viewed one warm. `staleTime` matches the BE's
- * `Cache-Control` on the same route (max-age=60).
+ * `Cache-Control` on `/items/:id` (max-age=60), so a refetch after
+ * the stale window has the best chance of serving from the CDN edge.
  */
 export function useItem(id: string) {
   return useQuery({
@@ -95,7 +97,7 @@ export function useItem(id: string) {
       }
       return data;
     },
-    staleTime: STALE_ITEMS_MS,
+    staleTime: STALE_ITEM_DETAIL_MS,
     retry: (failureCount, error) => {
       const status = (error as Error & { status?: number }).status;
       if (status === 404) return false;

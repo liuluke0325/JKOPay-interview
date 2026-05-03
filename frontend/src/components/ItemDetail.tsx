@@ -132,7 +132,9 @@ function CategoryBlock({
         <span className="text-right text-xs text-zinc-500">{pct}%</span>
         {data.deadline && (
           <p className="text-xs text-zinc-500">
-            {t('deadline')}：{format.dateTime(new Date(data.deadline), { dateStyle: 'medium' })}
+            {t('deadlineRow', {
+              date: format.dateTime(new Date(data.deadline), { dateStyle: 'medium' }),
+            })}
           </p>
         )}
       </section>

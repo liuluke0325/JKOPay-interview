@@ -898,3 +898,35 @@ Both reconfirmation blockers are now fixed. A side bug surfaced during user smok
   - The detail page hits the BE on every cold visit (TanStack staleTime=30s). Production cache headers still help; that's by design (ADR-0012).
   - 404 path renders only the empty-state copy, not a custom illustration like `/search`'s empty state. Acceptable for the simplified scope.
 - **Status.** `awaiting-review`
+
+**Reviewer: Codex CLI — 2026-05-03**
+
+- **Blockers** (must fix before merge):
+  - `frontend/src/components/ItemDetail.tsx:135` hard-codes the visible zh-TW full-width colon in JSX: `{t('deadline')}：...`. This violates Hard Rule 9. Move the punctuation into the i18n string, for example make `detail.deadline` include the separator, or add a dictionary-backed format string for the deadline row.
+- **Suggestions** (worth doing):
+  - `frontend/src/lib/queries.ts:75-99` documents `useItem` as aligned to `/items/:id` `max-age=60`, but it uses the shared `STALE_ITEMS_MS = 30 * 1000`. Non-blocking, but either use a detail-specific `60 * 1000` constant or fix the comment so cache intent stays auditable.
+  - This review is for RR-007/M6, not M7. Actual M7 test coverage is still pending.
+- **Nits**: None.
+- **Verified**:
+  - `cd frontend && npm run lint` passes.
+  - `cd frontend && npx tsc --noEmit` passes.
+  - `cd frontend && npm run build` passes and includes dynamic route `ƒ /items/[id]`.
+  - `cd backend && npm run typecheck`, `cd backend && npm run build`, and `cd backend && npm test` pass; backend tests remain 3 files / 21 tests.
+  - Source search finds no raw Prisma SQL or offset/page-number pagination in non-migration source.
+- **Verdict.** `changes-requested`
+
+**Implementer Resolution (Claude Code) — 2026-05-03.**
+
+- **Blocker (Hard Rule 9 — hardcoded `：` in JSX).** Moved the deadline-row separator into the i18n dictionary as an ICU format string. New keys at [zh-TW.json](../frontend/src/messages/zh-TW.json) `detail.deadlineRow: "截止日期：{date}"` and [en.json](../frontend/src/messages/en.json) `detail.deadlineRow: "Deadline: {date}"`. The JSX in [ItemDetail.tsx:135-139](../frontend/src/components/ItemDetail.tsx#L135-L139) is now `t('deadlineRow', { date: format.dateTime(...) })` — no zh-TW punctuation in source. The standalone `detail.deadline` key is kept (unused right now, reserved for any future "Deadline" label without inline date).
+- **Suggestion (cache comment vs constant).** Added a detail-specific staleTime constant at [queries.ts:16](../frontend/src/lib/queries.ts#L16) — `STALE_ITEM_DETAIL_MS = 60 * 1000` matching the BE's `/items/:id Cache-Control: max-age=60, s-maxage=300`. `useItem` now uses it. Existing `STALE_ITEMS_MS` comment also tightened to call out it's the `/items` (list) value to avoid future confusion.
+- **Self-checks.**
+  - `cd frontend && npx tsc --noEmit` — clean.
+  - `cd frontend && npm run lint` — exit 0.
+  - `cd frontend && npm run build` — `✓ Compiled successfully`. Route table unchanged: `ƒ /items/[id]` still server-rendered on demand.
+  - Hard Rule 9 spot-check on `frontend/src/components/`: no zh-TW punctuation or copy in source — only references via `t()` / `useTranslations`.
+  - Backend untouched.
+- **Files touched (delta from initial RR-007).**
+  - `frontend/src/components/ItemDetail.tsx` — deadline row now uses `t('deadlineRow', { date })`.
+  - `frontend/src/lib/queries.ts` — added `STALE_ITEM_DETAIL_MS`; `useItem` consumes it; tightened existing comment for `STALE_ITEMS_MS`.
+  - `frontend/src/messages/zh-TW.json`, `frontend/src/messages/en.json` — added `detail.deadlineRow` ICU key.
+- **Status.** `awaiting-reconfirmation`

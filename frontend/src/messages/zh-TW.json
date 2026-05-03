@@ -30,6 +30,7 @@
     "raised": "已募集",
     "goal": "目標",
     "deadline": "截止日期",
+    "deadlineRow": "截止日期：{date}",
     "price": "價格",
     "stock": "剩餘",
     "back": "返回"
