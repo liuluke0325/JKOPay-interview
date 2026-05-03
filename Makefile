@@ -1,4 +1,4 @@
-.PHONY: help setup install db-up db-down db-logs db-shell migrate seed dev dev-be dev-fe dev-all typecheck test types clean reset
+.PHONY: help setup install db-up db-down db-logs db-shell migrate migrate-apply seed dev dev-be dev-fe dev-all typecheck test types clean reset
 
 help:
 	@echo "interview-jopay — make targets"
@@ -9,7 +9,8 @@ help:
 	@echo "  make db-down     Stop Postgres"
 	@echo "  make db-logs     Tail Postgres logs"
 	@echo "  make db-shell    psql into the running Postgres"
-	@echo "  make migrate     Run Prisma migrations (dev mode)"
+	@echo "  make migrate     Generate (don't apply) a Prisma migration; review then 'make migrate-apply'"
+	@echo "  make migrate-apply  Apply pending migrations (prisma migrate deploy)"
 	@echo "  make seed        Run Prisma db seed"
 	@echo "  make dev         Alias for 'make dev-be' (backend Fastify dev server)"
 	@echo "  make dev-be      Run backend dev server (Fastify with hot reload, :3001)"
@@ -21,7 +22,7 @@ help:
 	@echo "  make clean       Stop DB and remove its volume (DESTROYS data)"
 	@echo "  make reset       clean + setup (full from-scratch rebuild)"
 
-setup: install db-up wait-db migrate seed
+setup: install db-up wait-db migrate-apply seed
 	@echo ""
 	@echo "✓ Setup complete. Run 'make dev-all' to start backend + frontend together."
 
@@ -48,8 +49,19 @@ wait-db:
 	done
 	@echo "✓ Postgres ready"
 
+# Generates a migration but does NOT apply it. Required because Prisma sees
+# schema-vs-DB drift (the pg_trgm GIN indexes are managed by raw-SQL migration
+# `add_pg_trgm_gin_search`, not the schema.prisma DSL) and will auto-emit
+# `DROP INDEX *_trgm_idx` if you let it. Review the generated SQL, edit out
+# any DROP INDEX hits, then run `make migrate-apply` to apply.
 migrate:
-	cd backend && npx prisma migrate dev
+	@echo "→ Generating migration (NOT applying)."
+	@echo "  Review backend/prisma/migrations/<timestamp>_*/migration.sql before applying."
+	@echo "  If you see DROP INDEX *_trgm_idx, EDIT IT OUT — those are raw-SQL-managed."
+	cd backend && npx prisma migrate dev --create-only
+
+migrate-apply:
+	cd backend && npx prisma migrate deploy
 
 seed:
 	cd backend && npm run db:seed

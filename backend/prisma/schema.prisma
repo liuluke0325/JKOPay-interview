@@ -33,7 +33,15 @@ model Item {
   // optional subCategory, ordered by createdAt DESC) for cursor pagination.
   @@index([category, subCategory, createdAt(sort: Desc)])
 
-  // Note: substring-search indexes on title/description live OUTSIDE this
-  // schema as raw-SQL migrations because Prisma can't yet declare GIN +
-  // gin_trgm_ops in the schema DSL. See migration `add_pg_trgm_gin_search`.
+  // ⚠️ DO NOT run `prisma migrate dev` without `--create-only` against this
+  // schema. The substring-search indexes on title/description live OUTSIDE
+  // this file as raw-SQL migrations (`add_pg_trgm_gin_search`) because
+  // Prisma's schema DSL can't yet express GIN + gin_trgm_ops. Auto-generated
+  // migrations will detect "drift" between schema (no indexes on
+  // title/description) and DB (has GIN indexes) and try to DROP them —
+  // silently undoing our search performance work.
+  //
+  // Use `make migrate` (which runs `--create-only`) and review the
+  // generated SQL before applying. If the diff contains DROP INDEX for
+  // any *_trgm_idx, edit it out before `prisma migrate deploy`.
 }

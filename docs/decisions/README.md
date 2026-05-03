@@ -15,7 +15,7 @@ Numbering is monotonic across the folder. Don't reuse numbers even after rejecti
 | 0005 | [Database: Postgres via docker-compose over SQLite](0005-db-postgres-docker.md) | Accepted |
 | 0006 | [Cursor-based pagination over offset](0006-pagination-cursor.md)          | Accepted      |
 | 0007 | [i18n: next-intl with zh-TW default](0007-i18n-next-intl.md)              | Accepted      |
-| 0008 | [List virtualization with react-window](0008-virtualization-react-window.md) | Proposed   |
+| 0008 | [List virtualization with react-window](0008-virtualization-react-window.md) | Accepted   |
 | 0009 | [Tab + scroll restore on search cancel](0009-tab-scroll-restore.md)       | Proposed      |
 | 0010 | [`pg_trgm` GIN for Chinese substring search](0010-pg-trgm-cjk-search.md)  | Accepted      |
 | 0011 | [`TRUST_PROXY` defaults off; production opts in](0011-trust-proxy-default-off.md) | Accepted |

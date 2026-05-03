@@ -4,7 +4,7 @@
 
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { api, type Category } from './api';
 
 // staleTime values are aligned with the BE's Cache-Control max-age
@@ -36,10 +36,9 @@ export function useSubCategories(category: Category) {
 }
 
 /**
- * Items list — used in M4 for infinite scroll. Single-page version here
- * for early wiring; M4 swaps to `useInfiniteQuery` to thread the cursor.
- * Both versions thread the AbortSignal so rapid filter/search changes
- * cancel in-flight requests (ADR-0014).
+ * Items list — single-page version. Kept for cases (e.g. detail prefetch)
+ * where the caller doesn't need pagination. The infinite-scroll variant
+ * lives in `useInfiniteItems` below.
  */
 export function useItems(args: {
   category: Category;
@@ -57,6 +56,39 @@ export function useItems(args: {
       if (error) throw new Error(`/items failed`);
       return data;
     },
+    staleTime: STALE_ITEMS_MS,
+  });
+}
+
+/**
+ * Items list with cursor pagination. Drives M4's infinite-scroll.
+ * `getNextPageParam` reads `nextCursor` from the most recent page; when
+ * the BE returns `null`, TanStack Query knows there are no more pages
+ * and `hasNextPage` flips to false.
+ *
+ * Each fetch threads TanStack's AbortSignal so rapid tab/sub-cat
+ * changes cancel in-flight pages — combined with the fact that
+ * `queryKey` includes the filter args, swapping filters starts a fresh
+ * cache entry rather than poisoning the previous one.
+ */
+export function useInfiniteItems(args: {
+  category: Category;
+  subCategory?: string;
+  q?: string;
+  limit?: number;
+}) {
+  return useInfiniteQuery({
+    queryKey: ['items-infinite', args],
+    initialPageParam: undefined as string | undefined,
+    queryFn: async ({ pageParam, signal }) => {
+      const { data, error } = await api.GET('/items', {
+        params: { query: { ...args, cursor: pageParam } },
+        signal,
+      });
+      if (error) throw new Error(`/items failed`);
+      return data;
+    },
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     staleTime: STALE_ITEMS_MS,
   });
 }
