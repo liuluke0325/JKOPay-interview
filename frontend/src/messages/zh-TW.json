@@ -24,6 +24,16 @@
     "emptyTitle": "查無相關資料",
     "emptyHint": "請調整關鍵字再重新搜尋"
   },
+  "detail": {
+    "loading": "載入中...",
+    "notFound": "找不到此項目",
+    "raised": "已募集",
+    "goal": "目標",
+    "deadline": "截止日期",
+    "price": "價格",
+    "stock": "剩餘",
+    "back": "返回"
+  },
   "errors": {
     "fetchFailed": "資料載入失敗，請稍後再試"
   }

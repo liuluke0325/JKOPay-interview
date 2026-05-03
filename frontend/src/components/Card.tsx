@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import type { Item } from '@/lib/api';
 
 // Fixed-height card matching the mockup: square logo on the left,
@@ -8,16 +9,22 @@ import type { Item } from '@/lib/api';
 // right. Height is locked to CARD_HEIGHT_PX so react-window's FixedSize
 // row component (ADR-0008) can virtualize without measuring.
 //
-// Non-interactive in M4. M6 wraps the article in a <Link href={`/items/${id}`}>
-// for the detail-page navigation. The data-item-id attr lets M7 e2e
-// tests find a specific card without parsing innerText.
+// M6: wraps the article in a <Link href={`/items/${id}`}> so the whole
+// row routes to the detail page. Scroll restoration on detail-back is
+// out of M6 scope (Codex RR-006 carry-over) — Next.js's default returns
+// the user to the top of the previous page, which is acceptable per the
+// brief's simplified scope.
+//
+// The data-item-id attr lets M7 e2e tests find a specific card without
+// parsing innerText.
 export const CARD_HEIGHT_PX = 96;
 
 export function Card({ item }: { item: Item }) {
   return (
-    <article
+    <Link
+      href={`/items/${item.id}`}
       data-item-id={item.id}
-      className="flex h-full items-center gap-3 border-b border-zinc-100 px-4 py-3"
+      className="flex h-full items-center gap-3 border-b border-zinc-100 px-4 py-3 transition-colors hover:bg-zinc-50 focus:bg-zinc-50 focus:outline-none"
     >
       <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md bg-zinc-50">
         <Image
@@ -35,6 +42,6 @@ export function Card({ item }: { item: Item }) {
         <h3 className="truncate text-sm font-semibold text-zinc-900">{item.title}</h3>
         <p className="line-clamp-2 text-xs text-zinc-500">{item.description}</p>
       </div>
-    </article>
+    </Link>
   );
 }

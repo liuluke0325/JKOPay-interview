@@ -27,6 +27,13 @@ export type ItemListResponse =
 export type SubCategory =
   paths['/sub-categories']['get']['responses']['200']['content']['application/json'][number];
 
+// Single-item shape from `GET /items/:id`. Identical to a row in
+// `ItemListResponse.items` plus `createdAt` etc., but expressed against
+// the detail endpoint so a future schema drift on the detail-only fields
+// would surface here.
+export type ItemDetail =
+  paths['/items/{id}']['get']['responses']['200']['content']['application/json'];
+
 // Category enum is used directly by Tab + SubCategoryDropdown components.
 export type Category = NonNullable<
   paths['/items']['get']['parameters']['query']

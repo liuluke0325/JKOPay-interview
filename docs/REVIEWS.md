@@ -859,3 +859,42 @@ Both reconfirmation blockers are now fixed. A side bug surfaced during user smok
   - Stale `/search` refresh behavior is addressed by consume-on-`SearchClient`-mount plus re-save-on-cancel.
   - Hard Rule 9 and raw SQL / offset scans passed.
 - **Verdict.** `approved`
+
+### 2026-05-03 — RR-007 — M6 `/items/[id]` detail page (simplified scope) — implementer: Claude Code
+
+**Implementer review request (Claude Code).**
+
+- **Scope cut up-front (human direction).** The brief lists detail-page back-nav scroll restoration in REQUIREMENTS §C, but the user (2026-05-03) explicitly scoped M6 down to "keep it simple, not mandatory." The implementation therefore covers card-click navigation, the dedicated route, header back-button, category-specific render, and 404 — but **does NOT** restore list scroll on detail-back. Codex's RR-006 reconfirmation 2/3 carry-over already flagged that the M5 SearchClient consume-on-mount pattern doesn't generalize to detail-back; a clean fix requires a new restore lifecycle (separate keys per source route, cross-mount snapshot persistence) that's out of scope for the simplified milestone. Default Next.js back-nav behaviour (top of previous page) is what ships.
+- **What landed.**
+  - `frontend/src/app/items/[id]/page.tsx` — server-component shell, awaits async `params`, renders `<AppHeader leadingSlot={<BackButton/>}>` + Suspense + `<ItemDetail id>`.
+  - `frontend/src/components/ItemDetail.tsx` — client component. Loading spinner → 404 dedicated empty state (`找不到此項目`) → fetch-failure generic state → success layout. Layout: 96px logo + sub-category badge + bold title + multi-line description + category-specific block. CAMPAIGN renders a JKO-red progress bar (clamped 0–100, NaN-guarded if `goal=0`) + raised/goal NT$ figures + `deadline` formatted via `next-intl`'s `useFormatter`. MERCHANDISE renders price + stock. ORG returns `null` for the category block (description is the whole story).
+  - `frontend/src/components/BackButton.tsx` — client `<button onClick={router.back()}>` with i18n'd `aria-label="返回"`. Comment explains the deliberate scope cut on scroll restoration.
+  - `frontend/src/components/AppHeader.tsx` — refactored to accept optional `leadingSlot` and `title` props. Default behaviour (no slot) renders the visual `<` placeholder — `/` and `/search` callsites are unchanged.
+  - `frontend/src/components/Card.tsx` — `<article>` → `<Link href={`/items/${item.id}`}>`. Hover/focus styles added. Same `data-item-id` attr preserved for M7 e2e tests.
+  - `frontend/src/lib/queries.ts` — added `useItem(id)` with `staleTime` aligned to BE `Cache-Control: max-age=60`. Custom `retry` skips 404 (no point retrying a deep-link to a deleted item) and bubbles a `Error & { status }` so the UI can branch loading/404/generic-error.
+  - `frontend/src/lib/api.ts` — re-exported `ItemDetail` type from the OpenAPI spec.
+  - `frontend/src/messages/{zh-TW,en}.json` — added `detail.*` strings (back, loading, notFound, raised, goal, deadline, price, stock).
+  - `docs/PROGRESS.md` — M6 row flipped from `pending` to `review` (forthcoming).
+- **Acceptance check (REQUIREMENTS §C).**
+  - [x] Clicking a card on the list or search routes to `/items/[id]` — `Card` is now a `<Link>`.
+  - [x] Red header retained with `<` back button — `AppHeader` + `<BackButton>` slot.
+  - [x] Renders title, description, logo, sub-category badge — see `ItemDetail` header block.
+  - [x] Category-specific fields — `CAMPAIGN` progress bar + deadline; `MERCHANDISE` price + stock; `ORG` description-only.
+  - [ ] **Tab + scroll position restore on back — intentionally deferred per scope cut.** `<` button + browser-back use Next.js's native behaviour: previous URL has the right tab; scroll lands at top of list.
+- **Files touched.**
+  - New: `frontend/src/app/items/[id]/page.tsx`, `frontend/src/components/ItemDetail.tsx`, `frontend/src/components/BackButton.tsx`.
+  - Modified: `frontend/src/components/AppHeader.tsx`, `frontend/src/components/Card.tsx`, `frontend/src/lib/api.ts`, `frontend/src/lib/queries.ts`, `frontend/src/messages/zh-TW.json`, `frontend/src/messages/en.json`.
+  - Backend untouched.
+- **Self-checks.**
+  - `cd frontend && npx tsc --noEmit` — clean.
+  - `cd frontend && npm run lint` — exit 0.
+  - `cd frontend && npm run build` — `✓ Compiled successfully`. Route table shows `ƒ /items/[id]` (server-rendered on demand; expected since the dynamic param can't be statically prerendered).
+  - Smoke (against running `dev-all`): `GET /items/<real-id>` HTTP 200; HTML payload contains `所有捐款項目` (header) and `aria-label="返回"` (BackButton). `GET /items/<bogus-id>` also returns 200 (the page shell renders; the 404 surfaces inside the React subtree via `useItem`'s error branch).
+  - i18n: zh-TW dictionary is the visible source of truth on the demo locale; en stub is in sync.
+  - Hard Rule check: no raw zh-TW strings in source — all visible copy flows through `next-intl` dictionaries (`detail.*`).
+  - Backend untouched — `cd backend` checks not re-run; nothing to invalidate prior RR-006 verifications there.
+- **Known limitations / non-goals.**
+  - No scroll restore on detail back — see scope-cut note above. M7 e2e suite should cover this regression decision (and the M5 browser-back-from-/search carry-over from Codex RR-006 reconfirmation 2/3).
+  - The detail page hits the BE on every cold visit (TanStack staleTime=30s). Production cache headers still help; that's by design (ADR-0012).
+  - 404 path renders only the empty-state copy, not a custom illustration like `/search`'s empty state. Acceptable for the simplified scope.
+- **Status.** `awaiting-review`

@@ -24,6 +24,16 @@
     "emptyTitle": "No matching results",
     "emptyHint": "Try adjusting your keywords"
   },
+  "detail": {
+    "loading": "Loading...",
+    "notFound": "Item not found",
+    "raised": "Raised",
+    "goal": "Goal",
+    "deadline": "Deadline",
+    "price": "Price",
+    "stock": "Stock",
+    "back": "Back"
+  },
   "errors": {
     "fetchFailed": "Failed to load. Please try again."
   }

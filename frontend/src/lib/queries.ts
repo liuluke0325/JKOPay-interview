@@ -71,6 +71,39 @@ export function useItems(args: {
  * `queryKey` includes the filter args, swapping filters starts a fresh
  * cache entry rather than poisoning the previous one.
  */
+/**
+ * Single item by id — drives the `/items/[id]` detail page. Cached
+ * under the `['item', id]` key so navigating between detail pages
+ * keeps the previously-viewed one warm. `staleTime` matches the BE's
+ * `Cache-Control` on the same route (max-age=60).
+ */
+export function useItem(id: string) {
+  return useQuery({
+    queryKey: ['item', id],
+    queryFn: async ({ signal }) => {
+      const { data, error, response } = await api.GET('/items/{id}', {
+        params: { path: { id } },
+        signal,
+      });
+      if (error) {
+        // Bubble 404 separately so the detail page can render the
+        // "not found" empty state without retrying. Other errors
+        // surface as the generic fetch-failed state.
+        const err: Error & { status?: number } = new Error('/items/:id failed');
+        err.status = response.status;
+        throw err;
+      }
+      return data;
+    },
+    staleTime: STALE_ITEMS_MS,
+    retry: (failureCount, error) => {
+      const status = (error as Error & { status?: number }).status;
+      if (status === 404) return false;
+      return failureCount < 3;
+    },
+  });
+}
+
 export function useInfiniteItems(args: {
   category: Category;
   subCategory?: string;
