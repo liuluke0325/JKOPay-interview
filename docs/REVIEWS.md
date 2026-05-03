@@ -930,3 +930,17 @@ Both reconfirmation blockers are now fixed. A side bug surfaced during user smok
   - `frontend/src/lib/queries.ts` — added `STALE_ITEM_DETAIL_MS`; `useItem` consumes it; tightened existing comment for `STALE_ITEMS_MS`.
   - `frontend/src/messages/zh-TW.json`, `frontend/src/messages/en.json` — added `detail.deadlineRow` ICU key.
 - **Status.** `awaiting-reconfirmation`
+
+**Reviewer: Codex CLI — 2026-05-03 — Reconfirmation**
+
+- **Blockers**: None. The Hard Rule 9 issue is fixed: the deadline separator now lives in `detail.deadlineRow` in both dictionaries, and `ItemDetail` renders it via `t('deadlineRow', { date })`.
+- **Suggestions**: None blocking. The detail stale-time mismatch was also fixed with `STALE_ITEM_DETAIL_MS = 60 * 1000`.
+- **Nits**: None.
+- **Verified**:
+  - `cd frontend && npm run lint` passes.
+  - `cd frontend && npx tsc --noEmit` passes.
+  - `cd frontend && npm run build` passes and keeps `ƒ /items/[id]`.
+  - Hard Rule 9 spot-check finds detail zh-TW strings only in message dictionaries.
+  - `cd backend && npm run typecheck`, `cd backend && npm run build`, and `cd backend && npm test` pass; backend tests remain 3 files / 21 tests.
+  - Source search finds no raw Prisma SQL or offset/page-number pagination in non-migration source.
+- **Verdict.** `approved`
