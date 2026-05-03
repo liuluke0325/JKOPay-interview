@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* JKO brand red — matched to the Figma header rather than Tailwind red. */
+/* JKOPAY brand red — matched to the Figma header rather than Tailwind red. */
 :root {
   --color-jko-red: #d4141c;
   --color-jko-red-dark: #b80f17;

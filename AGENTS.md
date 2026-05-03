@@ -9,8 +9,8 @@ making any changes.**
 
 ## What this project is
 
-JKO / 街口 interview assignment: build a charity-donation (公益捐款) project
-listing experience modeled on the JKO mobile app's "公益捐款項目 → 搜尋" flow.
+JKOPAY 街口支付 interview assignment: build a charity-donation (公益捐款) project
+listing experience modeled on the JKOPAY mobile app's "公益捐款項目 → 搜尋" flow.
 
 The product is a tabbed card list (`公益團體` / `捐款專案` / `義賣商品`) with
 sub-category filtering, infinite scroll, a dedicated search route with

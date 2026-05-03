@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { BackChevron } from './BackChevron';
 
 // Server component — title comes from the i18n dictionary at request
-// time. Mockup shows the title centered on a JKO-red bar with a back
+// time. Mockup shows the title centered on a JKOPAY-red bar with a back
 // chevron on the left. The chevron is a no-op visual placeholder on
 // `/` and `/search`; on `/items/[id]` the detail page swaps in a real
 // <BackButton/> via the `leadingSlot` prop.

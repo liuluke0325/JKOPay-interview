@@ -1,12 +1,12 @@
 # Requirements & Acceptance Checklist
 
-The acceptance bar for interview-jopay. Distilled from the JKO interview brief
+The acceptance bar for interview-jopay. Distilled from the JKOPAY interview brief
 (charity-donation listing) and the four UI mockup screenshots. Keep this
 updated as scope shifts — it's the contract for "done".
 
 ## 0. One-line goal
 
-JKO / 街口 interview assignment: build a charity-donation (公益捐款) project
+JKOPAY / 街口 interview assignment: build a charity-donation (公益捐款) project
 listing experience — a tabbed card list with infinite scroll, search, and
 sub-category filtering, backed by a Node/Fastify API serving paginated mock
 data from a Postgres database via Prisma.

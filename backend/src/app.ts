@@ -91,7 +91,7 @@ export async function buildServer(opts: BuildServerOptions = {}): Promise<Fastif
       info: {
         title: 'Jopay Donation API',
         description:
-          'Backend for the JKO charity-donation listing assignment. Items endpoints support cursor pagination, category and sub-category filters, and case-insensitive search. Every response carries `x-request-id` for log correlation; read endpoints set `Cache-Control` (see route descriptions).',
+          'Backend for the JKOPAY charity-donation listing assignment. Items endpoints support cursor pagination, category and sub-category filters, and case-insensitive search. Every response carries `x-request-id` for log correlation; read endpoints set `Cache-Control` (see route descriptions).',
         version: '0.1.0',
       },
       servers: [{ url: env.PUBLIC_BASE_URL ?? `http://localhost:${env.PORT}` }],
