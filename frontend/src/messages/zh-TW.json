@@ -1,4 +1,7 @@
 {
+  "meta": {
+    "description": "街口公益捐款項目列表 — 面試專案"
+  },
   "header": {
     "title": "所有捐款項目"
   },

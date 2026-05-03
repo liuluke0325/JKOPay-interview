@@ -16,10 +16,11 @@ const geistMono = Geist_Mono({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('header');
+  const tHeader = await getTranslations('header');
+  const tMeta = await getTranslations('meta');
   return {
-    title: t('title'),
-    description: 'JKO charity donation listing — interview project',
+    title: tHeader('title'),
+    description: tMeta('description'),
   };
 }
 

@@ -1,4 +1,7 @@
 {
+  "meta": {
+    "description": "JKO charity donation listing — interview project"
+  },
   "header": {
     "title": "All donation items"
   },

@@ -5,7 +5,7 @@ it current. Format per entry: date, what changed, what's next, blockers.
 
 ## Status snapshot
 
-- **Phase**: M3 complete. **RR-004 `awaiting-review`** (FE skeleton). Ready for M4 (card list + virtualized infinite scroll) once Codex approves.
+- **Phase**: M3 complete + RR-004 `approved` by Codex (one round of changes-requested → resolution → approved). Ready for M4 (card list + virtualized infinite scroll) on user go-ahead.
 - **Last updated**: 2026-05-02
 - **Branch**: main (git initialized; baseline commit `4df3baf init`)
 
@@ -18,7 +18,7 @@ Critical-path: M1 → M2 → M3 → M4 → M5 → M6 → M8. Tests (M7) and fina
 | M0  | Repo scaffolding + agent-collab docs                                                                                                     | done     |
 | M1  | BE skeleton: Fastify + TS + Prisma `Item` schema (`category` + `subCategory` enums + nullable category-specific fields) + Postgres + seed (≥90 items, real logos for some) | done    |
 | M2  | API endpoints: `GET /items` (category + subCategory + q + cursor) + `GET /items/:id` + `GET /sub-categories` + Swagger + production hardening (pg_trgm GIN, compress, ETag-deferred, rate-limit with TRUST_PROXY env, request-id) | done     |
-| M3  | FE skeleton: Next.js App Router + Tailwind + `next-intl` (zh-TW) + responsive shell; `/` view with red header + 3 tabs + functional sub-category dropdown | review  |
+| M3  | FE skeleton: Next.js App Router + Tailwind + `next-intl` (zh-TW) + responsive shell; `/` view with red header + 3 tabs + functional sub-category dropdown | done    |
 | M4  | Card list + virtualized infinite scroll (`react-window`) + end-of-list separator                                                         | pending  |
 | M5  | `/search` route: input + abort + debounce + loading + empty + tabbed results + restore-on-cancel                                         | pending  |
 | M6  | `/items/[id]` detail page: category-specific mock fields + back-with-scroll-restore                                                      | pending  |

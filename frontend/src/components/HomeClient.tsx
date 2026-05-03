@@ -2,10 +2,11 @@
 
 import { useTranslations } from 'next-intl';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { Tabs } from './Tabs';
 import { SubCategoryDropdown } from './SubCategoryDropdown';
 import type { Category } from '@/lib/api';
+import { useSubCategories } from '@/lib/queries';
 
 // All client-only state lives here so the parent `app/page.tsx` stays
 // a server component. URL `?tab=` and `?subCategory=` are the source
@@ -65,6 +66,21 @@ export function HomeClient() {
     [pushParams],
   );
 
+  // Defensive URL cleanup: a deep link like
+  // `/?tab=CAMPAIGN&subCategory=動物保護` carries an ORG sub-cat into a
+  // CAMPAIGN context — invalid for the active tab. Once the
+  // sub-categories load for the current tab, drop any URL value that
+  // isn't in the list. M4 will start sending this to /items, where the
+  // BE returns 400 for invalid combos (Codex flagged this in RR-004).
+  const { data: subCategoryOptions } = useSubCategories(activeTab);
+  useEffect(() => {
+    if (!activeSubCategory || !subCategoryOptions) return;
+    const valid = subCategoryOptions.some((opt) => opt.value === activeSubCategory);
+    if (!valid) {
+      pushParams({ subCategory: null });
+    }
+  }, [activeSubCategory, subCategoryOptions, pushParams]);
+
   return (
     <>
       <Tabs active={activeTab} onChange={handleTabChange} />
@@ -100,19 +116,16 @@ export function HomeClient() {
         </button>
       </div>
 
-      {/* Card list area — M4 replaces this placeholder with the
-          virtualized list. */}
-      <section className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 text-zinc-500">
-        <p className="text-sm">
-          M3 shell ready. Active tab: <strong>{activeTab}</strong>
-          {activeSubCategory && (
-            <>
-              {' · '}sub-category: <strong>{activeSubCategory}</strong>
-            </>
-          )}
-          . Card list lands in M4.
-        </p>
-      </section>
+      {/* Card list area — M4 replaces this with the virtualized list.
+          Intentionally empty until then; no placeholder copy because any
+          visible string must flow through the i18n dictionary
+          (AGENTS.md Hard Rule 9). The activeTab / activeSubCategory state
+          is observable via the URL bar, browser devtools, and (in dev)
+          the React Query devtools button. */}
+      <section
+        aria-label={t('list.loading')}
+        className="mx-auto w-full max-w-3xl flex-1 px-4 py-8"
+      />
     </>
   );
 }

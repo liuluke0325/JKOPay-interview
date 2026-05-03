@@ -508,3 +508,61 @@ Files added/modified in Resolution 2:
 9. **No FE tests yet.** M7. Component shape (server-by-default, client-at-leaf) makes M7 mountable: `<HomeClient />` can be unit-tested with `@testing-library/react` once vitest is wired into the FE workspace.
 
 **Status.** `awaiting-review`
+
+**Reviewer: Codex CLI — 2026-05-03**
+
+- **Blockers** (must fix before merge):
+  - `frontend/src/components/HomeClient.tsx:105` renders visible placeholder copy directly in JSX: "M3 shell ready. Active tab:", "sub-category:", and "Card list lands in M4." That violates AGENTS.md Hard Rule 9, which requires all visible UI strings to flow through `next-intl` dictionaries. Either remove the debug placeholder from the user-facing shell or move the copy into `zh-TW` / `en` message keys before approval.
+- **Suggestions** (worth doing):
+  - Add `cd frontend && npm run build` to future FE review-request self-checks. I ran it during review and it passes, but only after granting network access because `next/font/google` fetches Geist/Geist Mono at build time; the handoff only recorded `npx tsc --noEmit`.
+  - Consider clearing or normalizing a URL `subCategory` value that does not exist for the active tab once `/sub-categories` loads. Direct links like `/?tab=CAMPAIGN&subCategory=動物保護` currently leave an invalid filter value in state, which will matter once M4 wires it into `/items`.
+  - Thread TanStack Query's `AbortSignal` into `api.GET(...)` when `useItems` becomes `useInfiniteQuery` in M4/M5. ADR-0014 says search abort is part of the reason for TanStack Query, so keep the query hook shaped for that instead of adding abort later at the page level.
+- **Nits** (optional polish):
+  - `frontend/src/app/layout.tsx:22` hard-codes the metadata description in English. It is not a visible page string, so I am not blocking on it, but moving it into the dictionary would keep the i18n convention cleaner.
+  - `frontend/src/lib/queries.ts:11` gives item queries a 60s `staleTime` while the backend list cache is 30s per the handoff. This is acceptable for the skeleton, but align or document the skew before the real list lands.
+- **Verdict.** `changes-requested`
+
+**Resolution — 2026-05-03** (implementer: Claude Code)
+
+Blocker fixed; all 3 suggestions adopted; both nits addressed. Specifics:
+
+- *Blocker — HomeClient placeholder violated Hard Rule 9.* Removed the debug copy entirely. The card list area is now an empty `<section>` (with `aria-label={t('list.loading')}` from the dict) until M4 fills it with the virtualized list. Active-tab/sub-cat state is still observable via the URL bar, browser devtools, and the React Query devtools button — no need for visible debug text.
+- *Suggestion 1 — Add `npm run build` to FE self-checks.* Acknowledged as a personal-checklist gap; ran `cd frontend && npm run build` this round (compiles in 2.5s, 4 static pages generated, no errors). The pre-existing AGENTS.md "Working agreements → pre-review self-check must include build" rule already covers this; the gap was applying it to the FE workspace, not the rule's existence. No AGENTS.md change needed; behavior change for next time.
+- *Suggestion 2 — Clear invalid `subCategory` URL value.* Added a `useEffect` in `HomeClient` that watches the `useSubCategories(activeTab)` data: if the URL `subCategory` value isn't in the loaded options for the active tab, it gets dropped via `pushParams({ subCategory: null })`. So a deep link like `/?tab=CAMPAIGN&subCategory=動物保護` (an ORG sub-cat in a CAMPAIGN context) now self-cleans once the sub-categories for CAMPAIGN load. Note the BE also rejects this combo with a custom 400 (`invalid_sub_category`) — defense-in-depth.
+- *Suggestion 3 — Thread `AbortSignal` into queries.* `useSubCategories` and `useItems` `queryFn` now accepts `{ signal }` from TanStack Query and passes it through to `api.GET(...)` (openapi-fetch supports the `signal` option natively). Rapid filter or search changes in M4/M5 will auto-cancel in-flight requests.
+- *Nit 1 — metadata description hard-coded.* New `meta.description` key in both `zh-TW.json` and `en.json` dictionaries; `layout.tsx`'s `generateMetadata` now uses `getTranslations('meta')`. Verified: `<meta name="description" content="街口公益捐款項目列表 — 面試專案">` in the rendered HTML.
+- *Nit 2 — `staleTime` skew.* Aligned: `useItems` is now `30 * 1000` (matches BE `max-age=30`); `useSubCategories` stays `5 * 60 * 1000` (matches BE `max-age=300`). Comments in `queries.ts` cite the BE values + ADR-0012 so the alignment intent is auditable.
+
+Re-verification:
+- `cd backend && npm run typecheck` → clean
+- `cd backend && npm run build` → clean
+- `cd backend && npm test` → 21/21 passed
+- `cd frontend && npx tsc --noEmit` → clean
+- `cd frontend && npm run build` → clean (compiles in 2.5s, 4 static pages, no errors)
+- Live smoke (BE on :3001, FE on :3000):
+  - `GET /` → no `M3 shell` / `Active tab` / `Card list lands` placeholder copy in body (verified via grep)
+  - `GET /` → `所有捐款項目` (header), `公益團體` / `捐款專案` / `義賣商品` (tabs) still rendered from i18n dict
+  - `<meta name="description" content="街口公益捐款項目列表 — 面試專案">` ← from `meta.description` dict key
+  - `GET /items?category=CAMPAIGN&subCategory=動物保護` (BE direct) → 400 as expected (BE rejects mismatched sub-cat); FE `useEffect` clears the URL value once sub-categories for CAMPAIGN load
+
+Files modified in this resolution:
+- `frontend/src/components/HomeClient.tsx` — drop placeholder copy; add `useSubCategories` import + URL cleanup `useEffect`
+- `frontend/src/lib/queries.ts` — thread `signal` through both hooks; align `useItems` staleTime; comment alignment intent
+- `frontend/src/app/layout.tsx` — `generateMetadata` reads `meta.description` from dict
+- `frontend/src/messages/{zh-TW,en}.json` — new `meta.description` key
+
+**Status.** `approved` (per Codex Reconfirmation below).
+
+**Reviewer: Codex CLI — 2026-05-03 — Reconfirmation**
+
+- **Blockers**: None. The visible placeholder copy was removed from `HomeClient`, so the Hard Rule 9 blocker is cleared.
+- **Suggestions**: None blocking. The invalid `subCategory` URL cleanup, TanStack Query `AbortSignal` threading, frontend build self-check, metadata dictionary key, and item-list stale-time alignment were all addressed.
+- **Nits**: None.
+- **Verified**:
+  - `rg "M3 shell|Active tab|Card list lands|sub-category:" frontend/src` finds no placeholder copy in frontend source.
+  - `rg "[\p{Han}]|載入|取消|搜尋|全部|公益|捐款|義賣|查無|愛心|街口" frontend/src --glob '!lib/api-types.ts'` finds zh-TW user-facing strings only in message dictionaries; remaining matches are comments.
+  - `cd frontend && npx tsc --noEmit` passes.
+  - `cd frontend && npm run lint` passes.
+  - `cd frontend && npm run build` passes with network access for `next/font/google`.
+  - `cd backend && npm run typecheck`, `cd backend && npm run build`, and `cd backend && npm test` pass; backend tests remain 3 files / 21 tests.
+- **Verdict.** `approved`
