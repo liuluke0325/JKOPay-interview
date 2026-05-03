@@ -566,3 +566,63 @@ Files modified in this resolution:
   - `cd frontend && npm run build` passes with network access for `next/font/google`.
   - `cd backend && npm run typecheck`, `cd backend && npm run build`, and `cd backend && npm test` pass; backend tests remain 3 files / 21 tests.
 - **Verdict.** `approved`
+
+### 2026-05-03 — RR-005 — M4 card list + react-window virtualization + infinite scroll — implementer: Claude Code
+
+**Scope.** Implements M4 per REQUIREMENTS §5.A. Two commits per project convention: building blocks (chore A) + composition (feat B). Cards now render in `/`, infinite-scroll fires near the bottom, end-of-list separator shows when no more pages, sub-cat filter narrows the list, tab change resets cleanly. Aligns with Hard Rules 1, 9, 11, and ADR-0008 (react-window) which is now Accepted.
+
+**Files touched.**
+
+*Commit A (`6962786`) — chore(M4): building blocks*
+- `frontend/package.json` + `package-lock.json` — added `react-window ^2.2.7`. Removed wrong `@types/react-window` (v1 types; v2 ships its own).
+- `frontend/src/lib/queries.ts:42-72` — new `useInfiniteItems(args)` using TanStack `useInfiniteQuery` + cursor pagination (`getNextPageParam: (last) => last.nextCursor ?? undefined`). AbortSignal threaded.
+- `frontend/src/components/Card.tsx` — fixed-height card (96px, exported as `CARD_HEIGHT_PX`). next/image with `unoptimized` for SVG logos. Title `truncate` 1-line, desc `line-clamp-2`. `data-item-id` attr for future e2e.
+- `frontend/src/components/EndOfListSeparator.tsx` — `— 愛心沒有底線 —` from `t('list.endOfList')`.
+- `frontend/src/components/EmptyState.tsx` — inline-SVG folder + speech-bubble matching mockup screenshot 4. Default copy from `search.empty*` keys (M5 reuses without override).
+- `backend/prisma/schema.prisma:34-46` — strong warning comment about not running `prisma migrate dev` casually (would auto-DROP the trgm GIN indexes).
+- `Makefile` — `migrate` switched to `--create-only` (review-then-apply); new `migrate-apply` target for the apply step; `setup` uses `migrate-apply`.
+- `docs/decisions/0008-virtualization-react-window.md` — body filled (was stub). Status → Accepted.
+- `docs/decisions/README.md` — 0008 status flip.
+
+*Commit B (`<this commit>`) — feat(M4): wire ItemList*
+- `frontend/src/components/ItemList.tsx` — composes everything. react-window v2 `<List rowComponent={ItemRow} rowHeight={CARD_HEIGHT_PX} rowProps={{items}} onRowsRendered={prefetch} overscanCount={4} defaultHeight={600}>`. Loading/empty/error states. Prefetch fires when `stopIndex >= items.length - 5` and `hasNextPage`. Spinner uses `border-t-(--color-jko)` for brand color.
+- `frontend/src/components/HomeClient.tsx` — swapped the empty `<section />` for `<ItemList category={activeTab} subCategory={activeSubCategory || undefined} />`.
+- `docs/PROGRESS.md` — M4 row → review, status snapshot updated, M4 log entry.
+- `docs/AI_JOURNAL.md` — M4 entry (the prisma stray-migration story is the keepable one).
+
+**Commit / branch.** Branch `main`. Commits land on top of `46df1bc fix(M3): RR-004 review feedback`.
+
+**Self-checks done.** (Per RR-001 working agreement.)
+- `cd backend && npm run typecheck` → clean
+- `cd backend && npm run build` → clean
+- `cd backend && npm test` → 21/21 passed
+- `cd frontend && npx tsc --noEmit` → clean
+- `cd frontend && npm run build` → clean (4 static pages, no errors)
+- BE smoke (curl):
+  - `GET /items?category=ORG&limit=20` → 20 items + nextCursor (cursor pagination working).
+  - `GET /items?category=ORG&subCategory=動物保護` → 6 items, all `動物保護` (filter working).
+  - `GET /items?category=ORG&cursor=<page1-cursor>&limit=20` → next page, no overlap with page 1.
+- FE smoke:
+  - `GET /` → SSR'd HTML still has zh-TW header + tabs from i18n dict (`所有捐款項目`, `公益團體`, `捐款專案`, `義賣商品`).
+  - Cards render client-side after hydration (TanStack devtools shows `items-infinite` query active).
+  - Visual: opening `http://localhost:3000` in a browser shows red header, 3 tabs, `全部 ▼` dropdown, then the card list virtualized below.
+
+**Risks to focus on.**
+
+1. **react-window v2 API correctness.** First time we're using v2 in this project; the `<List rowComponent rowHeight rowProps>` shape is different from v1. Want a sanity check that the parent flex sizing pattern (`<div class="flex-1 min-h-0"><List style={{height: '100%'}} defaultHeight={600} /></div>`) is what v2's ResizeObserver expects.
+
+2. **`onRowsRendered` prefetch threshold.** Picked `stopIndex >= items.length - 5`. With 20-item pages and `overscanCount={4}`, this means we fetch the next page when ~5 rows are still off-screen — should give the user no perceptible loading gap. Worth a sanity check that this isn't over-aggressive (fetching too early) or under-aggressive (visible loader at the bottom).
+
+3. **Tab change cache behavior.** queryKey is `['items-infinite', { category, subCategory, ... }]`, so switching tabs starts a fresh entry. The previous tab's data stays cached (TanStack default `gcTime`) — returning is instant. But that means RAM grows as the user explores more category/subcat combos. For a reviewer-walks-through-3-tabs session this is fine; for a long session it'd matter. Worth a sanity check on the gc strategy for M5+.
+
+4. **Card click is a no-op.** The `data-item-id` attribute is there; M6 wires the actual `<Link href={`/items/${id}`} />`. Confirm this is the right shape (passthrough click vs explicit link wrapping the article).
+
+5. **Empty state default copy is the search variant.** EmptyState's defaults pull from `search.emptyTitle` / `search.emptyHint` keys (matches the mockup screenshot 4 illustration). For the rare "this category has zero items" case in M4 the copy reads "查無相關資料 / 請調整關鍵字再重新搜尋" which is technically search-flavored. Won't happen with our seed (each category has 30 items); flagging in case reviewer wants distinct list-empty copy now rather than at M5.
+
+6. **Prisma migrate guardrail testing.** The Makefile change + schema comment haven't been re-tested end-to-end (i.e. running `make migrate` and confirming it create-only's, then `make migrate-apply` applies). Want a sanity check that the new flow works in practice.
+
+7. **Hard Rule 9 spot-check on new components.** No hard-coded zh-TW literals in `Card.tsx` / `ItemList.tsx` / `EndOfListSeparator.tsx` / `EmptyState.tsx`. All visible strings flow through `useTranslations`. Worth `rg`-ing.
+
+8. **No FE tests yet.** M7. ItemList is the most complex client component to date — testing infinite-scroll prefetch, empty state, error state, sub-cat filter all matter. M7 should cover these.
+
+**Status.** `awaiting-review`

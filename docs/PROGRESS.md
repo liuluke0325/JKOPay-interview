@@ -5,7 +5,7 @@ it current. Format per entry: date, what changed, what's next, blockers.
 
 ## Status snapshot
 
-- **Phase**: M3 complete + RR-004 `approved` by Codex (one round of changes-requested → resolution → approved). Ready for M4 (card list + virtualized infinite scroll) on user go-ahead.
+- **Phase**: M4 complete. **RR-005 `awaiting-review`** (card list + react-window virtualization + infinite scroll). Ready for M5 (`/search` route) once Codex approves.
 - **Last updated**: 2026-05-02
 - **Branch**: main (git initialized; baseline commit `4df3baf init`)
 
@@ -19,7 +19,7 @@ Critical-path: M1 → M2 → M3 → M4 → M5 → M6 → M8. Tests (M7) and fina
 | M1  | BE skeleton: Fastify + TS + Prisma `Item` schema (`category` + `subCategory` enums + nullable category-specific fields) + Postgres + seed (≥90 items, real logos for some) | done    |
 | M2  | API endpoints: `GET /items` (category + subCategory + q + cursor) + `GET /items/:id` + `GET /sub-categories` + Swagger + production hardening (pg_trgm GIN, compress, ETag-deferred, rate-limit with TRUST_PROXY env, request-id) | done     |
 | M3  | FE skeleton: Next.js App Router + Tailwind + `next-intl` (zh-TW) + responsive shell; `/` view with red header + 3 tabs + functional sub-category dropdown | done    |
-| M4  | Card list + virtualized infinite scroll (`react-window`) + end-of-list separator                                                         | pending  |
+| M4  | Card list + virtualized infinite scroll (`react-window`) + end-of-list separator                                                         | review   |
 | M5  | `/search` route: input + abort + debounce + loading + empty + tabbed results + restore-on-cancel                                         | pending  |
 | M6  | `/items/[id]` detail page: category-specific mock fields + back-with-scroll-restore                                                      | pending  |
 | M7  | Tests: unit (API + cursor + restore logic) + e2e (scroll, tab switch, search→empty, cancel-restore, detail nav)                          | pending  |
@@ -68,6 +68,29 @@ Drawn from the brief's submission checklist + our REQUIREMENTS.md §5.G. Each it
 
 - Scaffolded `AGENTS.md`, `CLAUDE.md`, and the `docs/` seven-pack via the `agent-collab-init` skill. Cross-agent review workflow active.
 - Next: align the scaffold to the JKO brief (Phase A) before any code.
+
+### 2026-05-03 — M4 complete: card list + react-window virtualization + infinite scroll
+
+Two-commit milestone (chore/feat) per project convention:
+
+- **M4-A** `chore(M4): react-window deps + Card / EndOfList / EmptyState + useInfiniteItems hook` — building blocks landed standalone. react-window v2 installed (built-in TS types — removed wrong @types/react-window). Card.tsx (fixed-height 96px, mockup-matching shape). EndOfListSeparator (「— 愛心沒有底線 —」 from i18n). EmptyState (inline-SVG folder + bubble matching mockup screenshot 4, default copy from `search.empty*` keys for M5 reuse). New useInfiniteItems hook using TanStack useInfiniteQuery + cursor pagination + AbortSignal threading. ADR-0008 (react-window) body filled.
+- **M4-B** `feat(M4): wire ItemList — virtualized card list + infinite scroll into / view` — ItemList composes everything: react-window `<List rowComponent={ItemRow} rowHeight={96} onRowsRendered={prefetch}>` + loading/empty/error states. Prefetch fires when scroll reaches `rowCount - 5` and `hasNextPage` is true. HomeClient swaps the empty `<section />` for `<ItemList category subCategory />`.
+
+GIN index guard (also part of M4-A):
+- backend/prisma/schema.prisma: stronger comment warning against `prisma migrate dev` without `--create-only` (would auto-DROP the trgm GIN indexes). 
+- Makefile: `make migrate` now uses `--create-only`; new `make migrate-apply` for review-then-apply flow. `make setup` uses migrate-apply.
+- Origin: a stray migration was generated during a prior `prisma migrate dev` that would have dropped the GIN indexes. Caught + deleted before commit; the schema/Makefile change prevents recurrence.
+
+Smoke checks (BE :3001, FE :3000):
+- BE `/items?category=ORG&limit=20` → 20 items + nextCursor (cursor pagination working).
+- BE `/items?category=ORG&subCategory=動物保護` → 6 items, all 動物保護 (filter working).
+- FE `/` SSR'd HTML still has zh-TW header/tabs (server components unchanged).
+- FE compiles + production-builds clean (4 static pages, no errors).
+- Cards render client-side after hydration via useInfiniteItems → /items endpoint.
+
+ADR slate now: 10 accepted technical (0003-0008, 0010-0015) + 2 process (0001/0002) + 1 still-proposed (0009 tab/scroll restore for M5).
+
+RR-005 written for cross-agent review.
 
 ### 2026-05-03 — M3 complete: FE skeleton (Next.js + Tailwind + next-intl + TanStack Query + openapi-typescript codegen)
 

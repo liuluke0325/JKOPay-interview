@@ -346,3 +346,55 @@ sites get narrowed return types automatically — no drift surface. The
 manual `make types` step is the only friction; M9 will add a CI check
 (`make types && git diff --exit-code`) so a stale committed types file
 fails the build.
+
+### 2026-05-03 — M4: card list + react-window virtualization + infinite scroll — agent: Claude
+
+**Context.** M3 left `/` as a working shell with empty card area; M4 fills
+it with the actual virtualized card list per REQUIREMENTS §5.A and
+ADR-0008.
+
+**Exchange.** Three real decisions:
+
+1. *react-window v2 API change.* @types/react-window targets v1
+   (`<List itemSize>`); v2.2 is a rewrite with `<List rowComponent
+   rowHeight rowProps>` and ships its own types. Removed the wrong
+   types package after install. v2 also handles parent measurement via
+   ResizeObserver internally — no need for AutoSizer-style wrappers.
+
+2. *Infinite-scroll trigger via `onRowsRendered`, not IntersectionObserver.*
+   react-window v2's `onRowsRendered` callback fires with `{ startIndex,
+   stopIndex }` whenever the visible window shifts. Triggering
+   `fetchNextPage()` when `stopIndex >= items.length - 5 && hasNextPage`
+   is one line; an IntersectionObserver sentinel inside a virtualized
+   row would have been fragile because the row only mounts when in
+   view. Picked the simpler path.
+
+3. *Stray Prisma migration nearly DROPped the GIN indexes.* Earlier in
+   the session a `prisma migrate dev` ran (autoamted, hung, restarted)
+   and Prisma auto-generated a migration that would `DROP INDEX
+   Item_title_trgm_idx` + `Item_description_trgm_idx`. Reason: those
+   indexes are in a raw-SQL migration (`add_pg_trgm_gin_search`), not
+   declared in `schema.prisma` (Prisma DSL can't express GIN +
+   gin_trgm_ops). Prisma sees "drift" between schema (no indexes) and
+   DB (has indexes) and "fixes" by dropping. Caught the stray folder
+   before commit; M4-A adds three layers of defense:
+   - Strong comment in schema.prisma
+   - Makefile `migrate` switched to `--create-only` (review-required)
+   - New `migrate-apply` target for the apply step
+
+**Outcome.** Two M4 commits (chore A + feat B). FE typecheck + production
+build clean. BE smoke unchanged (no BE code in M4 — only schema comment
++ Makefile target rename). Cards render client-side via TanStack
+useInfiniteQuery; mockup chrome (fixed card height, logo + title +
+clamped desc) matches.
+
+**Lesson.** The Prisma + Postgres-extension-index combo is a known
+sharp edge but it bit us specifically because `prisma migrate dev` is
+the muscle-memory command. Switching the Makefile target to
+`--create-only` makes it visible in the SQL diff before it hits the
+DB. Generalizes to: any time the schema source-of-truth (Prisma DSL)
+can't express something the runtime DB has (custom extensions, partial
+indexes, materialized views, etc.), the migration tool will keep
+trying to "correct" the drift in the wrong direction. Either fight it
+upstream (ignore-list features as they exist) or change the workflow
+(--create-only review gate).

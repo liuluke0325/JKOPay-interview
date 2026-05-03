@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo } from 'react';
 import { Tabs } from './Tabs';
 import { SubCategoryDropdown } from './SubCategoryDropdown';
+import { ItemList } from './ItemList';
 import type { Category } from '@/lib/api';
 import { useSubCategories } from '@/lib/queries';
 
@@ -116,16 +117,12 @@ export function HomeClient() {
         </button>
       </div>
 
-      {/* Card list area — M4 replaces this with the virtualized list.
-          Intentionally empty until then; no placeholder copy because any
-          visible string must flow through the i18n dictionary
-          (AGENTS.md Hard Rule 9). The activeTab / activeSubCategory state
-          is observable via the URL bar, browser devtools, and (in dev)
-          the React Query devtools button. */}
-      <section
-        aria-label={t('list.loading')}
-        className="mx-auto w-full max-w-3xl flex-1 px-4 py-8"
-      />
+      {/* Card list area — virtualized via react-window (ADR-0008).
+          ItemList owns its own loading/empty/error states + infinite-
+          scroll pagination via TanStack useInfiniteQuery (ADR-0014). */}
+      <section className="mx-auto flex w-full max-w-3xl flex-1 flex-col">
+        <ItemList category={activeTab} subCategory={activeSubCategory || undefined} />
+      </section>
     </>
   );
 }
