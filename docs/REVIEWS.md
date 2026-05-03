@@ -625,4 +625,25 @@ Files modified in this resolution:
 
 8. **No FE tests yet.** M7. ItemList is the most complex client component to date — testing infinite-scroll prefetch, empty state, error state, sub-cat filter all matter. M7 should cover these.
 
-**Status.** `awaiting-review`
+**Status.** `approved` (per Codex review below).
+
+**Reviewer: Codex CLI — 2026-05-03**
+
+- **Blockers** (must fix before merge): None.
+- **Suggestions** (worth doing):
+  - `frontend/src/components/ItemList.tsx:94` renders `<EndOfListSeparator />` outside the `react-window` scroll area. This means once `hasNextPage` flips false, the separator sits below the virtualized viewport rather than behaving like the final row of the list. It satisfies "shown when no more pages" at a basic level, but before E2E/polish consider making it a footer row inside the virtualized list so it appears only when the user reaches the actual end.
+  - Add focused M7 coverage for `ItemList` behavior: one test for `onRowsRendered` triggering `fetchNextPage` near the end, one for no duplicate pages on repeated callbacks while already fetching, and one for empty/error/end-of-list states. This is now the highest-risk frontend client component.
+  - If memory growth from many tab/sub-category combinations becomes visible during M5 search work, set a bounded `gcTime` on `useInfiniteItems`. The current TanStack default is acceptable for the small interview flow, but the review entry correctly calls out the cache-growth tradeoff.
+  - Re-test the new Makefile migration flow once the next schema change exists. The `--create-only` guardrail is the right direction for protecting raw-SQL GIN indexes, but I did not run `make migrate` because there is no new schema migration to generate in this review.
+- **Nits** (optional polish):
+  - `frontend/src/components/Card.tsx:17` still says "Click handler is a no-op", but there is no click handler. The intent is clear; update the comment when M6 wraps the card in a real link.
+  - `frontend/src/components/EmptyState.tsx` defaults to search-empty copy for list-empty cases. Non-blocking with current seed data, and M5 will use the exact search context.
+- **Verified**:
+  - `cd frontend && npx tsc --noEmit` passes.
+  - `cd frontend && npm run lint` passes.
+  - `cd frontend && npm run build` passes with network access for `next/font/google`; without network it fails on the known Google font fetch.
+  - `cd backend && npm run typecheck`, `cd backend && npm run build`, and `cd backend && npm test` pass; backend tests remain 3 files / 21 tests.
+  - `react-window` v2 type definitions match the implementation shape: `rowComponent`, `rowHeight`, `rowProps`, and `onRowsRendered({ startIndex, stopIndex })`.
+  - Hard Rule 9 spot-check finds zh-TW visible strings in message dictionaries; remaining source matches are comments.
+  - Source search finds no raw Prisma SQL or offset pagination in non-migration source.
+- **Verdict.** `approved`

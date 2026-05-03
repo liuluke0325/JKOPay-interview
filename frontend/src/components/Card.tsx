@@ -8,8 +8,9 @@ import type { Item } from '@/lib/api';
 // right. Height is locked to CARD_HEIGHT_PX so react-window's FixedSize
 // row component (ADR-0008) can virtualize without measuring.
 //
-// Click handler is a no-op for M4 — M6 wires it to navigate to
-// `/items/[id]`. Logging via data-attribute so e2e (M7) can assert.
+// Non-interactive in M4. M6 wraps the article in a <Link href={`/items/${id}`}>
+// for the detail-page navigation. The data-item-id attr lets M7 e2e
+// tests find a specific card without parsing innerText.
 export const CARD_HEIGHT_PX = 96;
 
 export function Card({ item }: { item: Item }) {

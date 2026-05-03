@@ -55,6 +55,7 @@ future-you can jump back.>
 4. [Cursor pagination — compound key + OR-clause partition](#4-cursor-pagination--compound-key--or-clause-partition)
 5. [`trustProxy` and the X-Forwarded-For spoofing trap](#5-trustproxy-and-the-x-forwarded-for-spoofing-trap)
 6. [HTTP `Cache-Control` vs Redis — when each one wins](#6-http-cache-control-vs-redis--when-each-one-wins)
+7. [Prisma + Postgres extension drift — `prisma migrate dev` will silently DROP what its DSL can't express](#7-prisma--postgres-extension-drift--prisma-migrate-dev-will-silently-drop-what-its-dsl-cant-express)
 
 ---
 
@@ -221,6 +222,41 @@ Adding Redis "because cache" without checking the access pattern is over-enginee
 
 **Code:** [backend/src/routes/items.ts](../backend/src/routes/items.ts), [backend/src/routes/sub-categories.ts](../backend/src/routes/sub-categories.ts)
 **See also:** ADR-0012, `docs/SCALING.md` "Hot-read caching tier (Redis)" + "Distributed rate-limit state".
+
+---
+
+## 7. Prisma + Postgres extension drift — `prisma migrate dev` will silently DROP what its DSL can't express
+
+Prisma's schema DSL doesn't cover several common Postgres features:
+
+- GIN / GiST / BRIN indexes (only btree)
+- Operator classes like `gin_trgm_ops`, `gin_jsonb_ops`
+- Partial indexes (`WHERE deleted_at IS NULL`)
+- Expression indexes (`ON (lower(email))`)
+- Materialized views, foreign data wrappers, custom collations
+- Anything from extensions (`pg_trgm`, `pg_jieba`, `postgis`, …)
+
+If you need any of these, the workaround is a hand-written raw-SQL migration. **Trap:** `prisma migrate dev` then sees the live DB has an object the schema doesn't declare, calls it "drift," and auto-emits SQL to **drop it**. Apply that migration and your raw-SQL work is silently undone.
+
+The failure mode is invisible at runtime. Tests pass, API responds, only some perf characteristic regresses (a search that was index-backed becomes a seq scan; a JSONB query that was sub-millisecond becomes hundreds of ms). Without an explicit perf test you find out in production.
+
+This bit us in M2 — `prisma migrate dev` generated a migration that would `DROP INDEX Item_title_trgm_idx` + `Item_description_trgm_idx`, both managed by the raw-SQL `add_pg_trgm_gin_search` migration that landed our Chinese-search performance work. Caught the stray migration folder before commit; M4 added three layers of defense:
+
+1. **Prominent warning comment in `schema.prisma`** — anyone editing the schema sees the rule before they reach for `prisma migrate dev`.
+2. **`make migrate` rewired to `--create-only`** — the muscle-memory command no longer applies. It generates the migration SQL and prints "review the file before applying."
+3. **New `make migrate-apply` target uses `prisma migrate deploy`** — non-interactive apply, only after the diff is human-reviewed. `make setup` (clone-to-running) calls migrate-apply so first-time installs apply existing migrations without ever generating new ones.
+
+The pattern that broke is fully general: **any time the schema source-of-truth (Prisma DSL, sqlc YAML, drizzle ts, …) can't express a DB feature you need, the migration tool will keep trying to delete it**. Possible escape hatches by tool:
+
+- Prisma: `--create-only` review gate (this project), or watch for `@@ignore` / unsupported-feature attributes if your version supports them.
+- TypeORM: similar story; declare via `@Index` with `synchronize: false` plus migration files.
+- Atlas / Bytebase: `lint` hooks that flag `DROP INDEX` against allowlisted index names.
+- Hand-rolled SQL migrations only (no ORM-managed schema): no drift problem, more boilerplate everywhere else.
+
+**Lesson:** when picking an ORM for a project that will use Postgres extensions, audit whether the ORM's schema DSL can express the features you'll need. If not, design the migration workflow around `--create-only` (or equivalent) from day one rather than catching the silent DROP later.
+
+**Code:** [backend/prisma/schema.prisma:36-46](../backend/prisma/schema.prisma#L36-L46), [Makefile](../Makefile) `migrate` / `migrate-apply` / `setup` targets, [add_pg_trgm_gin_search migration](../backend/prisma/migrations/20260502153230_add_pg_trgm_gin_search/migration.sql)
+**See also:** ADR-0010 (`pg_trgm` GIN for Chinese substring search), §3 above (CJK trigram threshold), AI_JOURNAL M4 entry.
 
 <!-- Append new sections below, numbered, in roughly the order you learned
      them. Reorder later if a more logical grouping emerges. -->

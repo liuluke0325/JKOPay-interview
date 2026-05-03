@@ -5,7 +5,7 @@ it current. Format per entry: date, what changed, what's next, blockers.
 
 ## Status snapshot
 
-- **Phase**: M4 complete. **RR-005 `awaiting-review`** (card list + react-window virtualization + infinite scroll). Ready for M5 (`/search` route) once Codex approves.
+- **Phase**: M4 complete + RR-005 `approved` by Codex on first review (no blockers). Ready for M5 (`/search` route) on user go-ahead.
 - **Last updated**: 2026-05-02
 - **Branch**: main (git initialized; baseline commit `4df3baf init`)
 
@@ -19,10 +19,10 @@ Critical-path: M1 → M2 → M3 → M4 → M5 → M6 → M8. Tests (M7) and fina
 | M1  | BE skeleton: Fastify + TS + Prisma `Item` schema (`category` + `subCategory` enums + nullable category-specific fields) + Postgres + seed (≥90 items, real logos for some) | done    |
 | M2  | API endpoints: `GET /items` (category + subCategory + q + cursor) + `GET /items/:id` + `GET /sub-categories` + Swagger + production hardening (pg_trgm GIN, compress, ETag-deferred, rate-limit with TRUST_PROXY env, request-id) | done     |
 | M3  | FE skeleton: Next.js App Router + Tailwind + `next-intl` (zh-TW) + responsive shell; `/` view with red header + 3 tabs + functional sub-category dropdown | done    |
-| M4  | Card list + virtualized infinite scroll (`react-window`) + end-of-list separator                                                         | review   |
+| M4  | Card list + virtualized infinite scroll (`react-window`) + end-of-list separator                                                         | done     |
 | M5  | `/search` route: input + abort + debounce + loading + empty + tabbed results + restore-on-cancel                                         | pending  |
 | M6  | `/items/[id]` detail page: category-specific mock fields + back-with-scroll-restore                                                      | pending  |
-| M7  | Tests: unit (API + cursor + restore logic) + e2e (scroll, tab switch, search→empty, cancel-restore, detail nav)                          | pending  |
+| M7  | Tests: unit (API + cursor + restore logic) + e2e (scroll, tab switch, search→empty, cancel-restore, detail nav) + ItemList tests (per Codex RR-005: onRowsRendered fetchNextPage trigger near end, no duplicate pages while fetching, empty/error/end-of-list states) | pending  |
 | M8  | Deploy demo: Vercel (FE) + Railway (BE) + Neon (DB)                                                                                      | pending  |
 | M9  | Final prep: README (incl. AI 使用聲明) + ADR bodies (0003–0009) + rename `docs/AI_JOURNAL.md` → `docs/prompts/`                          | pending  |
 
@@ -68,6 +68,14 @@ Drawn from the brief's submission checklist + our REQUIREMENTS.md §5.G. Each it
 
 - Scaffolded `AGENTS.md`, `CLAUDE.md`, and the `docs/` seven-pack via the `agent-collab-init` skill. Cross-agent review workflow active.
 - Next: align the scaffold to the JKO brief (Phase A) before any code.
+
+### M5 / polish backlog (per Codex RR-005 forward-looking suggestions)
+
+Non-blocking observations from RR-005 to act on at the noted milestones:
+
+- **M5**: if memory growth from many `[category, subCategory]` cache entries becomes visible during search work, set a bounded `gcTime` on `useInfiniteItems` (currently default).
+- **M5/polish**: re-test the new Makefile `migrate` → `migrate-apply` flow once the next schema change exists. Codex didn't run it because there was no migration to generate at RR-005 time.
+- **M5/polish**: consider moving `<EndOfListSeparator />` into the virtualized list as a footer row. Current placement (outside the scroll area) works but doesn't render at "the actual end of the user's scroll" — it sits below the virtualized viewport.
 
 ### 2026-05-03 — M4 complete: card list + react-window virtualization + infinite scroll
 
